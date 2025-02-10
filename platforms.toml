@@ -12,8 +12,9 @@ elasticsearch_hosts = [
     "https://192.168.86.108:9200"
 ]
 
-default_schedule_interval = 5
-default_schedule_interval_unit = "m"
+schedule_interval = 5
+schedule_interval_unit = "m"
+query_language = "esql"
 
 [platforms.elastic.pipelines.cloudtrail]
 pipelines = ["pipelines/ecs_cloudtrail.yml"]

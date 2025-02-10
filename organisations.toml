@@ -5,6 +5,7 @@ title = "Per organisation configuration file"
 [organisations.acme.product.elastic]
 
 kibana_workspace_name = "ACME"
+query_language = "esql"
 
 [organisations.acme.product.elastic.logs.entra]
 

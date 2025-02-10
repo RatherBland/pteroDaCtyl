@@ -1,5 +1,5 @@
 
-def add_indexes(indexes: list, product: str, category: str, service: str) -> dict:
+def add_indexes(indexes: list, product: str = None, category: str = None, service: str = None) -> dict:
 
   transform = {
     "name": "Add Elastic Index(es)",
