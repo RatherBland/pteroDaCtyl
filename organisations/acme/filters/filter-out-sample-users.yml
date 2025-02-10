@@ -1,0 +1,10 @@
+title: Filter out Sample Users
+description: Filters out builtin example users like sample-role-used-by-stratus-for-ec2-password-data
+logsource: 
+  service: cloudtrail
+filter:
+  rules:
+    - authorization_failed_for_cloudtrail_event
+  selection: 
+    userName|startswith: "sample"
+  condition: not selection

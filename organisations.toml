@@ -1,0 +1,17 @@
+title = "Per organisation configuration file"
+
+[organisations]
+
+[organisations.acme.product.elastic]
+
+kibana_workspace_name = "ACME"
+
+[organisations.acme.product.elastic.logs.entra]
+
+indexes = ["logs-azure_ad.*-*-acme"]
+
+[organisations.acme.product.elastic.logs.cloudtrail]
+
+indexes = ["logs-aws.cloudtrail-*-acme"]
+
+[organisations.ecorp]

@@ -1,0 +1,4 @@
+[base]
+
+sigma_rules_directory = "rules"
+sigma_validation_config = "validation/validate.yml"

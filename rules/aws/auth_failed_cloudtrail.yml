@@ -1,0 +1,23 @@
+title: Authorization failed for a CloudTrail event
+name: authorization_failed_for_cloudtrail_event
+id: e62a9f0c-ca1e-46b2-85d5-a6da77f86d1a
+# either "staging" or "production"
+# status: staging
+description: Detects when a CloudTrail event fails to be authorized.
+references:
+    - https://www.trendmicro.com/cloudoneconformity/knowledge-base/aws/CloudWatchLogs/authorization-failures-alarm.html
+author: user
+date: 2024-02-01
+modified: 2024-02-01
+tags:
+    - attack.T1078
+logsource:
+    service: cloudtrail
+    product: aws
+detection:
+    selection:
+        - errorMessage: '*not authorized*'
+    condition: selection
+falsepositives:
+    - As this is a general purpose rule, legitimate usage of the encode functionality will trigger some false positives. Apply additional filters accordingly
+level: medium

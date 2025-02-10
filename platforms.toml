@@ -1,0 +1,20 @@
+
+title = "This is generic configuration for each SIEM platform. It is treated as default configuration and is overwritten if alernative config is specified in organisations.toml"
+
+[platforms]
+
+[platforms.elastic]
+
+auth_method = "basic"
+kibana_base_url = "https://192.168.86.108:5601"
+kibana_workspace_name = "Default"
+elasticsearch_hosts = [
+    "https://192.168.86.108:9200"
+]
+
+default_schedule_interval = 5
+default_schedule_interval_unit = "m"
+
+[platforms.elastic.pipelines.cloudtrail]
+pipelines = ["pipelines/ecs_cloudtrail.yml"]
+product = "cloudtrail"
