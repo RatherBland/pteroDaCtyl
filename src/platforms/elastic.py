@@ -2,7 +2,7 @@
 def add_indexes(indexes: list, product: str = None, category: str = None, service: str = None) -> dict:
 
   transform = {
-    "name": "Add Elastic Index(es)",
+    "name": "add_elastic_indexes",
     "priority": 100,
     "transformations": [
       {
