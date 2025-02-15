@@ -16,10 +16,10 @@ schedule_interval = 5
 schedule_interval_unit = "m"
 query_language = "esql"
 
-[platforms.elastic.pipelines.cloudtrail]
+[platforms.elastic.logs.cloudtrail]
 
 # The separation of query_pipelines and pipelines is to allow for the use of a query pipeline for the initial query (primarily for pre-compilation testing) and then a pipeline for the subsequent processing of the data most often to format the output into a useable detection by the output platform (Elastic, Splunk, Sentinel, etc).
 query_pipelines = ["pipelines/elastic/aws/ecs_cloudtrail.yml"]
 pipelines = ["pipelines/elastic/aws/esql_ndjson_cloudtrail.yml"]
 product = "cloudtrail"
-indexes = ["logs-aws.cloudtrail-*"]
+indexes = ["logs-aws.cloudtrail"]

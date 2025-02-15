@@ -5,16 +5,15 @@ from sigma.conversion.base import Backend, SigmaCollection
 from sigma.plugins import InstalledSigmaPlugins
 from platforms.elastic.handle_indexes import add_indexes
 from sigma.processing.pipeline import ProcessingPipeline
-from utils import load_rules
+from utils import load_rules, deep_merge
 
 
 class Conversion:
-    def __init__(self, org_product_rule_config: dict, organisation: str) -> None:
-        self._config = org_product_rule_config
+    def __init__(self, config: dict, testing: bool = False) -> None:
+        self._config = config
         self._platform_name = self._config.get("query_language")
-        self._filters_directory = f"organisations/{organisation}/filters"
-        self._organisation = organisation
-        logger.info(f"Initialized Conversion for organisation '{organisation}'")
+        self._testing = testing
+        
 
     def get_pipeline_config_group(self, rule_content):
         """Retrieve the logsource config group name"""
@@ -26,7 +25,7 @@ class Conversion:
                 rule_logsource[key] = value
 
         group_match = None
-        for key, value in self._config.get("pipelines").items():
+        for key, value in self._config.get("logs").items():
             filtered_value = {k: v for k, v in value.items() if k in sigma_logsource_fields}
             if filtered_value == rule_logsource:
                 group_match = key
@@ -57,8 +56,11 @@ class Conversion:
 
         if pipeline_config_group:
             rule_supported = True
-            pipeline_config = [*self._config["pipelines"][pipeline_config_group]["pipelines"],
-                               *self._config["pipelines"][pipeline_config_group]["query_pipelines"]]
+            if self._testing:
+                pipeline_config = [*self._config["logs"][pipeline_config_group].get("query_pipelines", [])]
+            else:
+                pipeline_config = [*self._config["logs"][pipeline_config_group].get("pipelines", []),
+                               *self._config["logs"][pipeline_config_group].get("query_pipelines", [])]
             logger.info(f"Rule is supported; using pipeline config group '{pipeline_config_group}'")
         else:
             rule_supported = False
@@ -68,8 +70,9 @@ class Conversion:
             backend_class = backends[backend_name]
             if pipeline_config:
                 if backend_name in ("esql", "eql"):
+                    index_config = self._config["logs"][pipeline_config_group]["indexes"]
                     include_indexes = ProcessingPipeline().from_dict(
-                        add_indexes(self._config["logs"][pipeline_config_group]["indexes"])
+                        add_indexes(index_config)
                     )
                     pipeline_resolver.add_pipeline_class(include_indexes)
                     pipeline_config.append("add_elastic_indexes")
@@ -97,14 +100,14 @@ def convert_rules(
     organisations = organisations_config["organisations"]
 
     for organisation, org_data in organisations.items():
-        products = org_data.get("product")
-        if products:
-            for product, prod_data in products.items():
-                logger.info(f"Processing organisation '{organisation}' for product '{product}'")
-                org_product_rule_config = {
-                    **platform_config["platforms"][product],
-                    **organisations[organisation]["product"][product],
-                }
+        platforms = org_data.get("platform")
+        if platforms:
+            for platform, prod_data in platforms.items():
+                logger.info(f"Processing organisation '{organisation}' for platform '{platform}'")
+                org_platform_rule_config = deep_merge(
+                    organisations[organisation]["platform"][platform],
+                    platform_config["platforms"][platform]
+                )
                 logs = prod_data["logs"].keys()
                 for log in logs:
                     matching_rules = [
@@ -124,12 +127,13 @@ def convert_rules(
                             logger.info(f"Skipping rule '{rule['rule'].get('title', 'Unknown title')}' as organisation '{organisation}' is not in the permitted list")
                             continue
 
-                        conversion = Conversion(org_product_rule_config, organisation)
+                        conversion = Conversion(org_platform_rule_config, organisation)
+                        logger.info(f"Initialized Conversion for organisation '{organisation}'")
                         sigma_rule = conversion.init_sigma_rule(
                             Path(rule["path"]),
                             Path(f"organisations/{organisation}/filters")
                         )
-                        result = conversion.convert_rule(rule["rule"], sigma_rule)
+                        result = conversion.convert_rule(rule["raw"], sigma_rule)
                         if result is not None:
                             logger.info(f"Rule converted successfully for organisation '{organisation}'")
                         else:

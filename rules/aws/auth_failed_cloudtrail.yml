@@ -23,23 +23,24 @@ level: medium
 organisations:
   - acme
 tests:
+  platforms:
     elastic:
-    - name: true_positive_test_url
-      hits: 1
-      attack_data:
-        - data: https://github.com/RatherBland/pteroDaCtyl/blob/main/test_data/elastic/aws/auth_failed_cloudtrail.json
+      true_positive_test_url:
+        hits: 1
+        attack_data:
+          data: https://github.com/RatherBland/pteroDaCtyl/blob/main/test_data/elastic/aws/auth_failed_cloudtrail.json
           type: url
           source: aws:cloudtrail
-    - name: true_positive_test_file
-      hits: 1
-      attack_data:
-        # The path provided should be relative to the root of this repo
-        - data: ./test_data/elastic/aws/auth_failed_cloudtrail.json
+      true_positive_test_file:
+        hits: 1
+        attack_data:
+          # The path provided should be relative to the root of this repo
+          data: ./test_data/elastic/aws/auth_failed_cloudtrail.json
           type: file
           source: aws:cloudtrail
-    - name: true_positive_test_raw
-      hits: 1
-      attack_data:
-        - data: '{"@timestamp":"2022-08-10T22:04:13Z","cloud":{"account":{"id":"111111111111"},"provider":"aws","region":"us-west-2"},"event":{"action":"GetPasswordData","category":["iam"],"kind":"event","outcome":"failure","type":["api"],"id":"0cdd3757-296a-4454-9619-d0f8be335081","created":"2022-08-10T22:04:13Z"},"user":{"id":"AROAYTOGP2RLP5AASA6I5:aws-go-sdk-1660169051746043000","name":"sample-role-used-by-stratus-for-ec2-password-data","roles":["sample-role-used-by-stratus-for-ec2-password-data"]},"source":{"address":"142.254.89.27","ip":"142.254.89.27"},"user_agent":{"original":"stratus-red-team_e3e4b259-63a4-4d89-acd5-a7286a279bb8"},"error":{"code":"Client.UnauthorizedOperation","message":"You are not authorized to perform this operation.","type":"authorization"},"aws":{"cloudtrail":{"event_version":"1.08","read_only":true,"recipient_account_id":"111111111111","request_id":"87368810-7b30-4ff9-b097-702778a53f22","user_identity":{"type":"AssumedRole","session_context":{"mfa_authenticated":"false","creation_date":"2022-08-10T22:04:12Z"}},"tls_details":{"tls_version":"TLSv1.2","cipher_suite":"ECDHE-RSA-AES128-GCM-SHA256","client_provided_host_header":"ec2.us-west-2.amazonaws.com"}}},"related":{"user":["sample-role-used-by-stratus-for-ec2-password-data"]}}'
+      true_positive_test_raw:
+        hits: 1
+        attack_data:
+          data: '{"@timestamp":"2022-08-10T22:04:13Z","cloud":{"account":{"id":"111111111111"},"provider":"aws","region":"us-west-2"},"event":{"action":"GetPasswordData","category":["iam"],"kind":"event","outcome":"failure","type":["api"],"id":"0cdd3757-296a-4454-9619-d0f8be335081","created":"2022-08-10T22:04:13Z"},"user":{"id":"AROAYTOGP2RLP5AASA6I5:aws-go-sdk-1660169051746043000","name":"sample-role-used-by-stratus-for-ec2-password-data","roles":["sample-role-used-by-stratus-for-ec2-password-data"]},"source":{"address":"142.254.89.27","ip":"142.254.89.27"},"user_agent":{"original":"stratus-red-team_e3e4b259-63a4-4d89-acd5-a7286a279bb8"},"error":{"code":"Client.UnauthorizedOperation","message":"You are not authorized to perform this operation.","type":"authorization"},"aws":{"cloudtrail":{"event_version":"1.08","read_only":true,"recipient_account_id":"111111111111","request_id":"87368810-7b30-4ff9-b097-702778a53f22","user_identity":{"type":"AssumedRole","session_context":{"mfa_authenticated":"false","creation_date":"2022-08-10T22:04:12Z"}},"tls_details":{"tls_version":"TLSv1.2","cipher_suite":"ECDHE-RSA-AES128-GCM-SHA256","client_provided_host_header":"ec2.us-west-2.amazonaws.com"}}},"related":{"user":["sample-role-used-by-stratus-for-ec2-password-data"]}}'
           type: raw
           source: aws:cloudtrail

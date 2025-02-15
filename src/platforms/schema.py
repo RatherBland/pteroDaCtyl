@@ -1,5 +1,5 @@
 from pydantic import BaseModel, PositiveInt, Field
-from typing import List, Dict
+from typing import Dict
 from enum import Enum
 
 class PlatformsEnum(str, Enum):
@@ -23,10 +23,9 @@ class AttackData(BaseModel):
     source: str
 
 class TestCase(BaseModel):
-    name: TestNameEnum
     hits: PositiveInt
-    attack_data: List[AttackData] = Field(..., min_items=1)
+    attack_data: AttackData
 
 class Tests(BaseModel):
-    platforms: Dict[PlatformsEnum, List[TestCase]] = Field(..., min_items=1)
+    platforms: Dict[PlatformsEnum, Dict[TestNameEnum, TestCase]] = Field(..., min_items=1)
     

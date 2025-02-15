@@ -2,16 +2,16 @@ title = "Per organisation configuration file"
 
 [organisations]
 
-[organisations.acme.product.elastic]
+[organisations.acme.platform.elastic]
 
 kibana_workspace_name = "ACME"
 query_language = "esql"
 
-[organisations.acme.product.elastic.logs.entra]
+[organisations.acme.platform.elastic.logs.entra]
 
 indexes = ["logs-azure_ad.*-*-acme"]
 
-[organisations.acme.product.elastic.logs.cloudtrail]
+[organisations.acme.platform.elastic.logs.cloudtrail]
 
 indexes = ["logs-aws.cloudtrail-*-acme"]
 
