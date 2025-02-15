@@ -1,3 +1,4 @@
+priority: 10
 vars:
   schedule_interval: 5
   schedule_interval_unit: m
