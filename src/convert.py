@@ -35,7 +35,6 @@ class Conversion:
                 break
             else:
                 group_match = None
-
         return group_match
 
     def init_sigma_rule(
@@ -53,14 +52,13 @@ class Conversion:
         backends = plugins.backends
         pipeline_resolver = plugins.get_pipeline_resolver()
         pipeline_config_group = self.get_pipeline_config_group(rule_content)
-
         backend_name = self._platform_name
 
         if pipeline_config_group:
             rule_supported = True
-            pipeline_config = self._config["pipelines"][pipeline_config_group][
+            pipeline_config = [*self._config["pipelines"][pipeline_config_group][
                 "pipelines"
-            ]
+            ], *self._config["pipelines"][pipeline_config_group]["query_pipelines"]]
 
             # Format
             # if "format" in self._parameters[pipeline_config_group]:
@@ -74,6 +72,7 @@ class Conversion:
             backend_class = backends[backend_name]
             if pipeline_config:
                 if backend_name in ("esql", "eql"):
+                    # TODO: Write Elastic rules to TOML
                     include_indexes = ProcessingPipeline().from_dict(
                         add_indexes(
                             self._config["logs"][pipeline_config_group]["indexes"]
@@ -113,7 +112,7 @@ def convert_rules(
     organisations_config: Dict[str, Any],
     pterodactyl_config: Dict[str, Any],
     platform_config: Dict[str, Any],
-) -> None:
+) -> list[str]:
     """
     For each organisation and its products, convert sigma rules that match the log types defined.
 
@@ -126,31 +125,36 @@ def convert_rules(
 
     for organisation, org_data in organisations.items():
         products = org_data.get("product")
-        for product, prod_data in products.items():
-            # Takes the platform config and overwrites the platform config with the organisation's product config
-            org_product_rule_config = {
-                **platform_config["platforms"][product],
-                **organisations[organisation]["product"][product],
-            }
+        if products:
+            for product, prod_data in products.items():
+                # Takes the platform config and overwrites the platform config with the organisation's product config
+                org_product_rule_config = {
+                    **platform_config["platforms"][product],
+                    **organisations[organisation]["product"][product],
+                }
 
-            logs = prod_data["logs"].keys()
-            for log in logs:
-                matching_rules = [
-                    rule
-                    for rule in rules
-                    if log
-                    in {
-                        rule["rule"]["logsource"].get("product"),
-                        rule["rule"]["logsource"].get("service"),
-                        rule["rule"]["logsource"].get("category"),
-                    }
-                ]
+                logs = prod_data["logs"].keys()
+                for log in logs:
+                    matching_rules = [
+                        rule
+                        for rule in rules
+                        if log
+                        in {
+                            rule["rule"]["logsource"].get("product"),
+                            rule["rule"]["logsource"].get("service"),
+                            rule["rule"]["logsource"].get("category"),
+                        }
+                    ]
 
-                for rule in matching_rules:
-                    conversion = Conversion(org_product_rule_config, organisation)
-                    sigma_rule = conversion.init_sigma_rule(
-                        Path(rule["path"]),
-                        Path(f"organisations/{organisation}/filters"),
-                    )
+                    for rule in matching_rules:
+                        rule_organisations = rule['rule'].get("organisations")
+                        if rule_organisations and organisation not in rule_organisations:
+                            continue
 
-                    return conversion.convert_rule(rule["rule"], sigma_rule)
+                        conversion = Conversion(org_product_rule_config, organisation)
+                        sigma_rule = conversion.init_sigma_rule(
+                            Path(rule["path"]),
+                            Path(f"organisations/{organisation}/filters"),
+                        )
+                        return conversion.convert_rule(rule["rule"], sigma_rule)
+                        
