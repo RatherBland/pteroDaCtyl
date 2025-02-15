@@ -51,7 +51,6 @@ def test_rules(rules: list[dict], platform_config: Dict[str, Any]) -> Optional[D
     
     
     for rule in rules:
-        # print(rule)
         validated_rule = validate_test_schema(rule, platforms)
         
         for platform in platforms:
@@ -71,9 +70,14 @@ def test_rules(rules: list[dict], platform_config: Dict[str, Any]) -> Optional[D
                             query=converted_rule[0]
 
                         )
-                        logger.info(
-                            f"Rule: {validated_rule['path']} tested successfully on platform: {platform} with result count: {result_count}"
-                        )
+                        if result_count == rule['raw']['tests']['platforms'][platform]['true_positive_test_raw']['hits']:
+                            logger.info(
+                                f"Rule: {validated_rule['path']} tested successfully on platform: {platform} with result count: {result_count}"
+                            )
+                        else:
+                            logger.error(
+                                f"Rule: {validated_rule['path']} failed to test on platform: {platform} with result count: {result_count}. Expected: {rule['raw']['tests']['platforms'][platform]['true_positive_test_raw']['hits']}"
+                            )
                 except Exception as e:
                     logger.error(
                         f"Rule: {validated_rule['path']} failed to test on platform: {platform} with error: {e}"

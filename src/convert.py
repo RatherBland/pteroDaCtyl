@@ -91,40 +91,39 @@ class Conversion:
 
 
 def convert_rules(
+    rules: list[dict],
     organisations_config: Dict[str, Any],
-    pterodactyl_config: Dict[str, Any],
     platform_config: Dict[str, Any],
 ) -> list[str]:
-    logger.info("Starting conversion of sigma rules for organisations.")
-    rules = load_rules(pterodactyl_config["base"]["sigma_rules_directory"])
+    logger.info("Starting conversion of sigma rules")
     organisations = organisations_config["organisations"]
 
     for organisation, org_data in organisations.items():
         platforms = org_data.get("platform")
         if platforms:
-            for platform, prod_data in platforms.items():
+            for platform, platform_data in platforms.items():
                 logger.info(f"Processing organisation '{organisation}' for platform '{platform}'")
                 org_platform_rule_config = deep_merge(
                     organisations[organisation]["platform"][platform],
                     platform_config["platforms"][platform]
                 )
-                logs = prod_data["logs"].keys()
+                logs = platform_data["logs"].keys()
                 for log in logs:
                     matching_rules = [
                         rule
                         for rule in rules
                         if log
                         in {
-                            rule["rule"]["logsource"].get("product"),
-                            rule["rule"]["logsource"].get("service"),
-                            rule["rule"]["logsource"].get("category"),
+                            rule["raw"]["logsource"].get("product"),
+                            rule["raw"]["logsource"].get("service"),
+                            rule["raw"]["logsource"].get("category"),
                         }
                     ]
                     logger.info(f"Found {len(matching_rules)} matching rule(s) for log '{log}' in organisation '{organisation}'")
                     for rule in matching_rules:
-                        rule_organisations = rule['rule'].get("organisations")
+                        rule_organisations = rule['raw'].get("organisations")
                         if rule_organisations and organisation not in rule_organisations:
-                            logger.info(f"Skipping rule '{rule['rule'].get('title', 'Unknown title')}' as organisation '{organisation}' is not in the permitted list")
+                            logger.info(f"Skipping rule '{rule['raw'].get('title', 'Unknown title')}' as organisation '{organisation}' is not in the permitted list")
                             continue
 
                         conversion = Conversion(org_platform_rule_config, organisation)
