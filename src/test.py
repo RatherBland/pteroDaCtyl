@@ -2,7 +2,7 @@ from typing import Dict, Any, Optional
 from platforms.schema import Tests
 from logger import logger
 from pydantic import ValidationError
-from platforms.elastic.replay import add_query_delete
+from platforms import elastic, splunk
 from convert import Conversion
 
 
@@ -49,36 +49,38 @@ def test_rules(rules: list[dict], platform_config: Dict[str, Any]) -> Optional[D
     
     platforms = list(platform_config['platforms'].keys())
     
+    platform_functions = {"elastic": elastic.replay.index_query_delete, "splunk": splunk.replay.index_query_delete}
+    
     
     for rule in rules:
         validated_rule = validate_test_schema(rule, platforms)
         
         for platform in platforms:
             if validated_rule:
-                try:
-                    conversion = Conversion(config=platform_config['platforms'][platform], testing=True)
-                    sigma_rule = conversion.init_sigma_rule(rule['path'])
-                    converted_rule = conversion.convert_rule(rule['raw'], sigma_rule)
-                    pipeline_group = conversion.get_pipeline_config_group(rule['raw'])
-                    if converted_rule:
-                        data = rule['raw']['tests']['platforms'][platform]['true_positive_test_raw']['attack_data']['data']
-                        index = platform_config['platforms'][platform]['logs'][pipeline_group]['indexes'][0]
+                # try:
+                conversion = Conversion(config=platform_config['platforms'][platform], testing=True)
+                sigma_rule = conversion.init_sigma_rule(rule['path'])
+                converted_rule = conversion.convert_rule(rule['raw'], sigma_rule)
+                pipeline_group = conversion.get_pipeline_config_group(rule['raw'])
+                if converted_rule:
+                    data = rule['raw']['tests']['platforms'][platform]['true_positive_test_raw']['attack_data']['data']
+                    index = platform_config['platforms'][platform]['logs'][pipeline_group]['indexes'][0]
 
-                        result_count = add_query_delete(
-                            data=data,
-                            index=index,
-                            query=converted_rule[0]
+                    result_count = platform_functions[platform](
+                        data=data,
+                        index=index,
+                        query=converted_rule[0]
 
-                        )
-                        if result_count == rule['raw']['tests']['platforms'][platform]['true_positive_test_raw']['hits']:
-                            logger.info(
-                                f"Rule: {validated_rule['path']} tested successfully on platform: {platform} with result count: {result_count}"
-                            )
-                        else:
-                            logger.error(
-                                f"Rule: {validated_rule['path']} failed to test on platform: {platform} with result count: {result_count}. Expected: {rule['raw']['tests']['platforms'][platform]['true_positive_test_raw']['hits']}"
-                            )
-                except Exception as e:
-                    logger.error(
-                        f"Rule: {validated_rule['path']} failed to test on platform: {platform} with error: {e}"
                     )
+                    if result_count == rule['raw']['tests']['platforms'][platform]['true_positive_test_raw']['hits']:
+                        logger.info(
+                            f"Rule: {validated_rule['path']} tested successfully on platform: {platform} with result count: {result_count}"
+                        )
+                    else:
+                        logger.error(
+                            f"Rule: {validated_rule['path']} failed to test on platform: {platform} with result count: {result_count}. Expected: {rule['raw']['tests']['platforms'][platform]['true_positive_test_raw']['hits']}"
+                        )
+                # except Exception as e:
+                #     logger.error(
+                #         f"Rule: {validated_rule['path']} failed to test on platform: {platform} with error: {e}"
+                #     )

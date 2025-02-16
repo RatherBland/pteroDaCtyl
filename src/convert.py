@@ -3,17 +3,16 @@ from pathlib import Path
 from logger import logger
 from sigma.conversion.base import Backend, SigmaCollection
 from sigma.plugins import InstalledSigmaPlugins
-from platforms.elastic.handle_indexes import add_indexes
+from platforms import elastic, splunk
 from sigma.processing.pipeline import ProcessingPipeline
-from utils import load_rules, deep_merge
+from utils import deep_merge
 
 
 class Conversion:
     def __init__(self, config: dict, testing: bool = False) -> None:
         self._config = config
         self._platform_name = self._config.get("query_language")
-        self._testing = testing
-        
+        self._testing = testing        
 
     def get_pipeline_config_group(self, rule_content):
         """Retrieve the logsource config group name"""
@@ -53,7 +52,7 @@ class Conversion:
         pipeline_resolver = plugins.get_pipeline_resolver()
         pipeline_config_group = self.get_pipeline_config_group(rule_content)
         backend_name = self._platform_name
-
+        
         if pipeline_config_group:
             rule_supported = True
             if self._testing:
@@ -67,20 +66,34 @@ class Conversion:
             logger.warning("Rule is not supported due to missing pipeline config group.")
 
         if rule_supported:
-            backend_class = backends[backend_name]
-            if pipeline_config:
-                if backend_name in ("esql", "eql"):
-                    index_config = self._config["logs"][pipeline_config_group]["indexes"]
-                    include_indexes = ProcessingPipeline().from_dict(
-                        add_indexes(index_config)
-                    )
-                    pipeline_resolver.add_pipeline_class(include_indexes)
-                    pipeline_config.append("add_elastic_indexes")
-                pipeline = pipeline_resolver.resolve(pipeline_config)
-                logger.info(f"Pipeline resolved successfully with config {pipeline_config}")
-            else:
-                pipeline = None
-                logger.info("No pipeline configuration provided.")
+            try:
+                backend_class = backends[backend_name]
+            except KeyError:
+                if backend_name is None:
+                    logger.error(f"Conversion aborted: backend {backend_name} not found. No backend specified in platforms.toml.")
+                else:
+                    logger.error(f"Conversion aborted: backend {backend_name} not found. It has not been installed.")
+                return None
+            # if pipeline_config:
+            if backend_name in ("esql", "eql"):
+                index_config = self._config["logs"][pipeline_config_group]["indexes"]
+                include_indexes = ProcessingPipeline().from_dict(
+                    elastic.handle_indexes.add_indexes(index_config)
+                )
+                pipeline_resolver.add_pipeline_class(include_indexes)
+                pipeline_config.append("add_elastic_indexes")
+            elif backend_name in ("splunk"):
+                index_config = self._config["logs"][pipeline_config_group]["indexes"]
+                include_indexes = ProcessingPipeline().from_dict(
+                    splunk.handle_indexes.add_indexes(index_config)
+                )
+                pipeline_resolver.add_pipeline_class(include_indexes)
+                pipeline_config.append("add_splunk_indexes")
+            pipeline = pipeline_resolver.resolve(pipeline_config)
+            logger.info(f"Pipeline resolved successfully with config {pipeline_config}")
+            # else:
+            #     pipeline = None
+            #     logger.info("No pipeline configuration provided.")
             backend: Backend = backend_class(processing_pipeline=pipeline)
             converted_rule = backend.convert(sigma_rule)
             logger.info(f"Conversion completed successfully for rule: {rule_content.get('title', 'Unknown title')}")
@@ -97,6 +110,8 @@ def convert_rules(
 ) -> list[str]:
     logger.info("Starting conversion of sigma rules")
     organisations = organisations_config["organisations"]
+    
+    converted_rules = []
 
     for organisation, org_data in organisations.items():
         platforms = org_data.get("platform")
@@ -137,4 +152,5 @@ def convert_rules(
                             logger.info(f"Rule converted successfully for organisation '{organisation}'")
                         else:
                             logger.error(f"Failed to convert rule for organisation '{organisation}'")
-                        return result
+                        converted_rules.extend(result)
+    return converted_rules

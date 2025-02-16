@@ -16,3 +16,9 @@ indexes = ["logs-azure_ad.*-*-acme"]
 indexes = ["logs-aws.cloudtrail-*-acme"]
 
 [organisations.ecorp]
+
+[organisations.ecorp.platform.splunk]
+
+[organisations.ecorp.platform.splunk.logs.cloudtrail]
+
+indexes = ["cloudtrail"]

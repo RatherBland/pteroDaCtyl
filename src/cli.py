@@ -13,8 +13,8 @@ def main():
     parser = argparse.ArgumentParser(description='pteroDaCtyl CLI')    
     subparsers = parser.add_subparsers(dest='command', help='Available commands')
 
-    test_parser = subparsers.add_parser('test', help='Test detection rules against available security platforms')
-    test_parser.add_argument('-f', '--file', help='The path to the detection to test', required=False)
+    validate_parser = subparsers.add_parser('validate', help='Validate detection rules against available security platforms')
+    validate_parser.add_argument('-f', '--file', help='The path to the detection to validate', required=False)
     
     convert_parser = subparsers.add_parser('convert', help='Convert detection rules to security platforms format')
     convert_parser.add_argument('-f', '--file', help='The path to the detection to convert', required=False)
@@ -25,10 +25,13 @@ def main():
         path_to_rules = args.file
     else:
         path_to_rules = pterodactyl_config["base"]["sigma_rules_directory"]
-    if args.command == 'test':
+        
+    if args.command == 'validate':
         test_rules(load_rules(path_to_rules), platform_config)
     elif args.command == 'convert':
-        convert_rules(load_rules(path_to_rules), organisations_config, platform_config)
+        print(convert_rules(load_rules(path_to_rules), organisations_config, platform_config))
+    elif args.command == 'livetest':
+        pass
     else:
         parser.print_help()
     

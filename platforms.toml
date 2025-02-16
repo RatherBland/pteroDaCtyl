@@ -23,3 +23,14 @@ query_pipelines = ["pipelines/elastic/aws/ecs_cloudtrail.yml"]
 pipelines = ["pipelines/elastic/aws/esql_ndjson_cloudtrail.yml"]
 product = "cloudtrail"
 indexes = ["logs-aws.cloudtrail"]
+
+[platforms.splunk]
+
+query_language = "splunk"
+
+[platforms.splunk.logs.cloudtrail]
+
+query_pipelines = []
+pipelines = []
+product = "cloudtrail"
+indexes = ["cloudtrail"]
