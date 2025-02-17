@@ -10,26 +10,37 @@ logsource:
     service: signinlogs
     category: authentication
 detection:
-    selection:
+    selection_1:
         event.dataset: azure.signinlogs
         event.category: authentication
         azure.signinlogs.category|contains:
             - 'NonInteractiveUserSignInLogs'
             - 'SignInLogs'
-        azure.signinlogs.properties.resource_display_name|re: '(?i).*365.*'
-        event.outcome: 'failure'
-    condition: selection
+        azure.signinlogs.properties.resource_display_name|re: '(.*)365(.*)'
+    selection_2:
+        event.outcome: 'success'
+    condition: selection_1 and not selection_2
+
+tests:
+    platforms:
+        elastic:
+            true_positive_test_raw:
+                hits: 1
+                attack_data:
+                    data: '[{"@timestamp": "2025-02-17T10:00:00Z","event": {"dataset": "azure.signinlogs","category": "authentication","outcome": "failure"},"azure": {"signinlogs": {"category": "NonInteractiveUserSignInLogs","properties": {"resource_display_name": "Microsoft Office 365","user_principal_name": "target.user@company.com","status": {"error_code": 50126}}}},"source": {"ip": "192.168.1.1"}},{"@timestamp": "2025-02-17T10:01:00Z","event": {"dataset": "azure.signinlogs","category": "authentication","outcome": "failure"},"azure": {"signinlogs": {"category": "NonInteractiveUserSignInLogs","properties": {"resource_display_name": "Microsoft Office 365","user_principal_name": "target.user@company.com","status": {"error_code": 50126}}}},"source": {"ip": "192.168.1.2"}},{"@timestamp": "2025-02-17T10:02:00Z","event": {"dataset": "azure.signinlogs","category": "authentication","outcome": "failure"},"azure": {"signinlogs": {"category": "NonInteractiveUserSignInLogs","properties": {"resource_display_name": "Microsoft Office 365","user_principal_name": "target.user@company.com","status": {"error_code": 50126}}}},"source": {"ip": "192.168.1.3"}},{"@timestamp": "2025-02-17T10:03:00Z","event": {"dataset": "azure.signinlogs","category": "authentication","outcome": "failure"},"azure": {"signinlogs": {"category": "NonInteractiveUserSignInLogs","properties": {"resource_display_name": "Microsoft Office 365","user_principal_name": "target.user@company.com","status": {"error_code": 50126}}}},"source": {"ip": "192.168.1.4"}},{"@timestamp": "2025-02-17T10:04:00Z","event": {"dataset": "azure.signinlogs","category": "authentication","outcome": "failure"},"azure": {"signinlogs": {"category": "NonInteractiveUserSignInLogs","properties": {"resource_display_name": "Microsoft Office 365","user_principal_name": "target.user@company.com","status": {"error_code": 50126}}}},"source": {"ip": "192.168.1.5"}},{"@timestamp": "2025-02-17T10:05:00Z","event": {"dataset": "azure.signinlogs","category": "authentication","outcome": "failure"},"azure": {"signinlogs": {"category": "NonInteractiveUserSignInLogs","properties": {"resource_display_name": "Microsoft Office 365","user_principal_name": "target.user@company.com","status": {"error_code": 50126}}}},"source": {"ip": "192.168.1.6"}},{"@timestamp": "2025-02-17T10:06:00Z","event": {"dataset": "azure.signinlogs","category": "authentication","outcome": "failure"},"azure": {"signinlogs": {"category": "NonInteractiveUserSignInLogs","properties": {"resource_display_name": "Microsoft Office 365","user_principal_name": "target.user@company.com","status": {"error_code": 50126}}}},"source": {"ip": "192.168.1.7"}},{"@timestamp": "2025-02-17T10:07:00Z","event": {"dataset": "azure.signinlogs","category": "authentication","outcome": "failure"},"azure": {"signinlogs": {"category": "NonInteractiveUserSignInLogs","properties": {"resource_display_name": "Microsoft Office 365","user_principal_name": "target.user@company.com","status": {"error_code": 50126}}}},"source": {"ip": "192.168.1.8"}},{"@timestamp": "2025-02-17T10:08:00Z","event": {"dataset": "azure.signinlogs","category": "authentication","outcome": "failure"},"azure": {"signinlogs": {"category": "NonInteractiveUserSignInLogs","properties": {"resource_display_name": "Microsoft Office 365","user_principal_name": "target.user@company.com","status": {"error_code": 50126}}}},"source": {"ip": "192.168.1.9"}},{"@timestamp": "2025-02-17T10:09:00Z","event": {"dataset": "azure.signinlogs","category": "authentication","outcome": "failure"},"azure": {"signinlogs": {"category": "NonInteractiveUserSignInLogs","properties": {"resource_display_name": "Microsoft Office 365","user_principal_name": "target.user@company.com","status": {"error_code": 50126}}}},"source": {"ip": "192.168.1.10"}},{"@timestamp": "2025-02-17T10:10:00Z","event": {"dataset": "azure.signinlogs","category": "authentication","outcome": "failure"},"azure": {"signinlogs": {"category": "NonInteractiveUserSignInLogs","properties": {"resource_display_name": "Microsoft Office 365","user_principal_name": "target.user@company.com","status": {"error_code": 50126}}}},"source": {"ip": "192.168.1.11"}},{"@timestamp": "2025-02-17T10:11:00Z","event": {"dataset": "azure.signinlogs","category": "authentication","outcome": "failure"},"azure": {"signinlogs": {"category": "NonInteractiveUserSignInLogs","properties": {"resource_display_name": "Microsoft Office 365","user_principal_name": "target.user@company.com","status": {"error_code": 50126}}}},"source": {"ip": "192.168.1.12"}},{"@timestamp": "2025-02-17T10:12:00Z","event": {"dataset": "azure.signinlogs","category": "authentication","outcome": "failure"},"azure": {"signinlogs": {"category": "NonInteractiveUserSignInLogs","properties": {"resource_display_name": "Microsoft Office 365","user_principal_name": "target.user@company.com","status": {"error_code": 50126}}}},"source": {"ip": "192.168.1.13"}},{"@timestamp": "2025-02-17T10:13:00Z","event": {"dataset": "azure.signinlogs","category": "authentication","outcome": "failure"},"azure": {"signinlogs": {"category": "NonInteractiveUserSignInLogs","properties": {"resource_display_name": "Microsoft Office 365","user_principal_name": "target.user@company.com","status": {"error_code": 50126}}}},"source": {"ip": "192.168.1.14"}},{"@timestamp": "2025-02-17T10:14:00Z","event": {"dataset": "azure.signinlogs","category": "authentication","outcome": "failure"},"azure": {"signinlogs": {"category": "NonInteractiveUserSignInLogs","properties": {"resource_display_name": "Microsoft Office 365","user_principal_name": "target.user@company.com","status": {"error_code": 50126}}}},"source": {"ip": "192.168.1.15"}},{"@timestamp": "2025-02-17T10:15:00Z","event": {"dataset": "azure.signinlogs","category": "authentication","outcome": "failure"},"azure": {"signinlogs": {"category": "NonInteractiveUserSignInLogs","properties": {"resource_display_name": "Microsoft Office 365","user_principal_name": "target.user@company.com","status": {"error_code": 50126}}}},"source": {"ip": "192.168.1.16"}},{"@timestamp": "2025-02-17T10:16:00Z","event": {"dataset": "azure.signinlogs","category": "authentication","outcome": "failure"},"azure": {"signinlogs": {"category": "NonInteractiveUserSignInLogs","properties": {"resource_display_name": "Microsoft Office 365","user_principal_name": "target.user@company.com","status": {"error_code": 50126}}}},"source": {"ip": "192.168.1.17"}},{"@timestamp": "2025-02-17T10:17:00Z","event": {"dataset": "azure.signinlogs","category": "authentication","outcome": "failure"},"azure": {"signinlogs": {"category": "NonInteractiveUserSignInLogs","properties": {"resource_display_name": "Microsoft Office 365","user_principal_name": "target.user@company.com","status": {"error_code": 50126}}}},"source": {"ip": "192.168.1.18"}},{"@timestamp": "2025-02-17T10:18:00Z","event": {"dataset": "azure.signinlogs","category": "authentication","outcome": "failure"},"azure": {"signinlogs": {"category": "NonInteractiveUserSignInLogs","properties": {"resource_display_name": "Microsoft Office 365","user_principal_name": "target.user@company.com","status": {"error_code": 50126}}}},"source": {"ip": "192.168.1.19"}},{"@timestamp": "2025-02-17T10:19:00Z","event": {"dataset": "azure.signinlogs","category": "authentication","outcome": "failure"},"azure": {"signinlogs": {"category": "NonInteractiveUserSignInLogs","properties": {"resource_display_name": "Microsoft Office 365","user_principal_name": "target.user@company.com","status": {"error_code": 50126}}}},"source": {"ip": "192.168.1.20"}},{"@timestamp": "2025-02-17T10:20:00Z","event": {"dataset": "azure.signinlogs","category": "authentication","outcome": "failure"},"azure": {"signinlogs": {"category": "NonInteractiveUserSignInLogs","properties": {"resource_display_name": "Microsoft Office 365","user_principal_name": "target.user@company.com","status": {"error_code": 50126}}}},"source": {"ip": "192.168.1.21"}}]'
+                    type: raw
+                    source: azure:signinlogs
 ---
 title: Microsoft 365 Multiple Failed Login Attempts from Different Sources
 correlation:
-  type: temporal
+  type: value_count
   rules: microsoft_365_multiple_failed_login_attempts
   timespan: 30m
-  aggregation:
-      field: azure.signinlogs.properties.user_principal_name
-      aggr_values:
-          - source.ip: 20
-          - count(): 20
+  group-by: azure.signinlogs.properties.user_principal_name
+  condition: 
+    gte: 20
+    field: source.ip
+
 falsepositives:
     - Automated services with misconfigured credentials
     - Password resets affecting multiple services
@@ -41,8 +52,3 @@ tags:
     - attack.t1110.001 # Password Guessing
 references:
     - https://learn.microsoft.com/en-us/entra/identity-platform/reference-error-codes
-fields:
-    - azure.signinlogs.properties.user_principal_name
-    - source.ip
-    - event.outcome
-    - azure.signinlogs.properties.resource_display_name

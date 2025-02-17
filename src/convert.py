@@ -143,7 +143,7 @@ def convert_rules(
                     ]
                     logger.info(f"Found {len(matching_rules)} matching rule(s) for log '{log}' in organisation '{organisation}'")
                     for rule in matching_rules:
-                        rule_organisations = rule['raw'][0].get("organisations")
+                        rule_organisations = rule['raw'][0].get("organisations") if rule['raw'][0].get("organisations") else rule['raw'][1].get("organisations")
                         if rule_organisations and organisation not in rule_organisations:
                             logger.info(f"Skipping rule '{rule['raw'][0].get('title', 'Unknown title')}' as organisation '{organisation}' is not in the permitted list")
                             continue
