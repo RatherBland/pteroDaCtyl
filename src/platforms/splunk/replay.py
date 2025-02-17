@@ -14,13 +14,17 @@ def delete_all_documents(index: str, wait: int = 2) -> None:
         wait: Time to wait (in seconds) between polling the job status.
     """
     # Connect to Splunk service
-    service = client.connect(
-        host="192.168.86.106",
-        port=8089,
-        username="admin",
-        password="dontchangeme"
-    )
-    
+    try:
+        service = client.connect(
+            host="192.168.86.106",
+            port=8089,
+            username="admin",
+            password="dontchangeme"
+        )
+    except ConnectionRefusedError:
+        logger.error("Failed to connect to the Splunk service. Check host and credentials are correct.")
+        return
+        
     # Create a deletion job with a search that matches all events in the index.
     delete_query = f"search index={index} | delete"
     delete_job = service.jobs.create(delete_query)
@@ -45,13 +49,17 @@ def index_query_delete(index: str, data: str, query: str, wait: int = 2) -> int:
         The number of search results returned by the query.
     """
     # Connect to Splunk service
-    service = client.connect(
-        host="192.168.86.106",
-        port=8089,
-        username="admin",
-        password="dontchangeme",
-        verify=False
-        )
+    try:
+        service = client.connect(
+            host="192.168.86.106",
+            port=8089,
+            username="admin",
+            password="dontchangeme",
+            verify=False
+            )
+    except ConnectionRefusedError:
+        logger.error("Failed to connect to the Splunk service. Check host and credentials are correct.")
+        return
     
     # Create a unique cleanup identifier
     cleanup_id = str(uuid.uuid4())

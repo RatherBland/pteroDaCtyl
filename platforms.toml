@@ -24,6 +24,13 @@ pipelines = ["pipelines/elastic/aws/esql_ndjson_cloudtrail.yml"]
 product = "cloudtrail"
 indexes = ["logs-aws.cloudtrail"]
 
+[platforms.elastic.logs.azure]
+
+query_pipelines = []
+pipelines = ["pipelines/elastic/aws/esql_ndjson_cloudtrail.yml"]
+product = "azure"
+indexes = ["logs-azure"]
+
 [platforms.splunk]
 
 query_language = "splunk"
@@ -34,3 +41,7 @@ query_pipelines = []
 pipelines = []
 product = "cloudtrail"
 indexes = ["cloudtrail"]
+
+# [platforms.sentinel]
+
+# query_language = "kusto"

@@ -7,15 +7,14 @@ title = "Per organisation configuration file"
 kibana_workspace_name = "ACME"
 query_language = "esql"
 
-[organisations.acme.platform.elastic.logs.entra]
+[organisations.acme.platform.elastic.logs.azure]
 
-indexes = ["logs-azure_ad.*-*-acme"]
+indexes = ["logs-azure-*-acme"]
 
 [organisations.acme.platform.elastic.logs.cloudtrail]
 
 indexes = ["logs-aws.cloudtrail-*-acme"]
 
-[organisations.ecorp]
 
 [organisations.ecorp.platform.splunk]
 

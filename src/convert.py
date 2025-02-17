@@ -18,20 +18,26 @@ class Conversion:
         """Retrieve the logsource config group name"""
         sigma_logsource_fields = ["category", "product", "service"]
         rule_logsource = {}
+        
+        rule_content = rule_content[0] if type(rule_content) is list else rule_content
 
         for key, value in rule_content["logsource"].items():
             if key in sigma_logsource_fields:
                 rule_logsource[key] = value
 
         group_match = None
-        for key, value in self._config.get("logs").items():
-            filtered_value = {k: v for k, v in value.items() if k in sigma_logsource_fields}
-            if filtered_value == rule_logsource:
-                group_match = key
-                break
-        if not group_match:
-            logger.warning(f"No matching pipeline config group found for rule with logsource {rule_logsource}")
-        return group_match
+        try:
+            for key, value in self._config.get("logs").items():
+                filtered_value = {k: v for k, v in value.items() if k in sigma_logsource_fields}
+                if filtered_value.items() <= rule_logsource.items():
+                    group_match = key
+                    break
+            if not group_match:
+                logger.warning(f"No matching pipeline config group found for rule with logsource {rule_logsource}")
+            return group_match
+        except AttributeError:
+            logger.error(f"No logsources were found the platform {self._platform_name}. Please check the platforms.toml")
+            return None
 
     def init_sigma_rule(
         self, rule_path: Path, exceptions_dir: Path = None
@@ -46,6 +52,9 @@ class Conversion:
         return sigma_rule
 
     def convert_rule(self, rule_content: dict, sigma_rule: SigmaCollection) -> None:
+        
+        rule_content = rule_content[0] if type(rule_content) is list else rule_content
+        
         logger.info(f"Starting conversion for rule: {rule_content.get('title', 'Unknown title')}")
         plugins = InstalledSigmaPlugins.autodiscover()
         backends = plugins.backends
@@ -91,9 +100,7 @@ class Conversion:
                 pipeline_config.append("add_splunk_indexes")
             pipeline = pipeline_resolver.resolve(pipeline_config)
             logger.info(f"Pipeline resolved successfully with config {pipeline_config}")
-            # else:
-            #     pipeline = None
-            #     logger.info("No pipeline configuration provided.")
+
             backend: Backend = backend_class(processing_pipeline=pipeline)
             converted_rule = backend.convert(sigma_rule)
             logger.info(f"Conversion completed successfully for rule: {rule_content.get('title', 'Unknown title')}")
@@ -129,16 +136,16 @@ def convert_rules(
                         for rule in rules
                         if log
                         in {
-                            rule["raw"]["logsource"].get("product"),
-                            rule["raw"]["logsource"].get("service"),
-                            rule["raw"]["logsource"].get("category"),
+                            rule["raw"][0]["logsource"].get("product"),
+                            rule["raw"][0]["logsource"].get("service"),
+                            rule["raw"][0]["logsource"].get("category"),
                         }
                     ]
                     logger.info(f"Found {len(matching_rules)} matching rule(s) for log '{log}' in organisation '{organisation}'")
                     for rule in matching_rules:
-                        rule_organisations = rule['raw'].get("organisations")
+                        rule_organisations = rule['raw'][0].get("organisations")
                         if rule_organisations and organisation not in rule_organisations:
-                            logger.info(f"Skipping rule '{rule['raw'].get('title', 'Unknown title')}' as organisation '{organisation}' is not in the permitted list")
+                            logger.info(f"Skipping rule '{rule['raw'][0].get('title', 'Unknown title')}' as organisation '{organisation}' is not in the permitted list")
                             continue
 
                         conversion = Conversion(org_platform_rule_config, organisation)

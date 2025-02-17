@@ -1,6 +1,22 @@
 # pteroDaCtyl
 
-pteroDaCtyl is a command-line tool that processes Sigma detection rules and converts or validates them against various security platforms (e.g., Elastic, Splunk, Sentinel). It offers a flexible, configurable architecture for both rule conversion and testing. pterDaCtyl supports multi-org and multi-tenanted environments.
+pteroDaCtyl is a command-line tool that processes Sigma detection rules and converts or validates them against various security platforms (e.g., Elastic, Splunk, Sentinel). It offers a flexible, configurable architecture for both rule conversion and testing.
+
+pteroDaCtyl addresses the problem of automating and standardizing the conversion and validation of generic Sigma detection rules for various security platforms. Specifically, it:
+
+* **Automates Rule Conversion**: It transforms Sigma rules into platform-specific formats (e.g., Elastic, Splunk) using configurable processing pipelines.
+
+* **Validates Detection Rules**: It tests rules against defined schemas to ensure that they include necessary test cases and are compliant with platform requirements.
+
+* **Supports Multi-Organization Configurations**: It leverages organization-specific and global configurations, making it adaptable to different environments and requirements.
+
+## Acknowledgements
+* **medioxor: dactical** https://github.com/medioxor/dactical/
+Provided the idea and code for storing platform specific tests within Sigma rules and a whole suite of other feedback and direction. This project wouldn't be possible without them.
+
+* **certeu: droid** https://github.com/certeu/droid/
+The whole idea for this project came about after seeing the work produced to make droid. Many architecture decisions and code were directly influenced by the droid project.
+
 
 ## CLI Functions
 

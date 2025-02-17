@@ -17,7 +17,7 @@ def validate_test_schema(rule: dict, platforms: list) -> Optional[Dict[str, Any]
     logger.info(f"Validating test schema for rule: {rule['path']}")
     
     # Retrieve the tests section from the rule definition, if present
-    rule_test = rule["raw"].get("tests")
+    rule_test = rule["raw"][0].get("tests") if rule["raw"][0].get("tests") else rule["raw"][1].get("tests")
     
     if rule_test:
         rule_test_platforms = list(rule_test.get("platforms").keys())
@@ -60,10 +60,13 @@ def test_rules(rules: list[dict], platform_config: Dict[str, Any]) -> Optional[D
                 # try:
                 conversion = Conversion(config=platform_config['platforms'][platform], testing=True)
                 sigma_rule = conversion.init_sigma_rule(rule['path'])
-                converted_rule = conversion.convert_rule(rule['raw'], sigma_rule)
-                pipeline_group = conversion.get_pipeline_config_group(rule['raw'])
+                converted_rule = conversion.convert_rule(rule['raw'][0], sigma_rule)
+                pipeline_group = conversion.get_pipeline_config_group(rule['raw'][0])
                 if converted_rule:
-                    data = rule['raw']['tests']['platforms'][platform]['true_positive_test_raw']['attack_data']['data']
+                    
+                    rule_tests = rule['raw'][0].get('tests') if rule['raw'][0].get('tests') else rule['raw'][1].get('tests')
+                    
+                    data = rule_tests['platforms'][platform]['true_positive_test_raw']['attack_data']['data']
                     index = platform_config['platforms'][platform]['logs'][pipeline_group]['indexes'][0]
 
                     result_count = platform_functions[platform](
@@ -72,13 +75,13 @@ def test_rules(rules: list[dict], platform_config: Dict[str, Any]) -> Optional[D
                         query=converted_rule[0]
 
                     )
-                    if result_count == rule['raw']['tests']['platforms'][platform]['true_positive_test_raw']['hits']:
+                    if result_count == rule_tests['platforms'][platform]['true_positive_test_raw']['hits']:
                         logger.info(
                             f"Rule: {validated_rule['path']} tested successfully on platform: {platform} with result count: {result_count}"
                         )
                     else:
                         logger.error(
-                            f"Rule: {validated_rule['path']} failed to test on platform: {platform} with result count: {result_count}. Expected: {rule['raw']['tests']['platforms'][platform]['true_positive_test_raw']['hits']}"
+                            f"Rule: {validated_rule['path']} failed to test on platform: {platform} with result count: {result_count}. Expected: {rule_tests['platforms'][platform]['true_positive_test_raw']['hits']}"
                         )
                 # except Exception as e:
                 #     logger.error(

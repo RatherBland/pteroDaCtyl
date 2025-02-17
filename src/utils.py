@@ -18,10 +18,10 @@ def load_rules(path_to_rules: str) -> List[Dict[str, Any]]:
     """
     path = Path(path_to_rules)
     if path_to_rules.endswith(".yml") or path_to_rules.endswith(".yaml"):
-        files = [{"path": path_to_rules, "raw": yaml.safe_load(open(path_to_rules, "rb"))}]
+        files = [{"path": path_to_rules, "raw": list(yaml.safe_load_all(open(path_to_rules, "rb")))}]
     else:
         files = [
-            {"path": str(rule_file), "raw": yaml.safe_load(open(rule_file, "rb"))}
+            {"path": str(rule_file), "raw": list(yaml.safe_load_all(open(rule_file, "rb")))}
             for rule_file in path.rglob("*.y*ml")
         ]
     return files
