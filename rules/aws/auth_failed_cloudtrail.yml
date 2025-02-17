@@ -20,6 +20,13 @@ detection:
 falsepositives:
     - As this is a general purpose rule, legitimate usage of the encode functionality will trigger some false positives. Apply additional filters accordingly
 level: medium
+
+# organisations:
+#     - acme
+
+# platforms:
+#     - elastic
+
 tests:
   platforms:
     elastic:

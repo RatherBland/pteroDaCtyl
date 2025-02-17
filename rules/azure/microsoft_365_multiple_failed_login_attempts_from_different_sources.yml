@@ -1,0 +1,48 @@
+title: Microsoft 365 Multiple Failed Login Attempts
+name: microsoft_365_multiple_failed_login_attempts
+id: 5f234c89-7c13-4c8a-9f1a-b543edf23e89
+status: experimental
+description: Detects potential brute force attempts against Microsoft 365 services by monitoring failed authentication attempts from multiple sources or high volumes of failed logins
+author: Claude
+date: 2025-02-17
+logsource:
+    product: azure
+    service: signinlogs
+    category: authentication
+detection:
+    selection:
+        event.dataset: azure.signinlogs
+        event.category: authentication
+        azure.signinlogs.category|contains:
+            - 'NonInteractiveUserSignInLogs'
+            - 'SignInLogs'
+        azure.signinlogs.properties.resource_display_name|re: '(?i).*365.*'
+        event.outcome: 'failure'
+    condition: selection
+---
+title: Microsoft 365 Multiple Failed Login Attempts from Different Sources
+correlation:
+  type: temporal
+  rules: microsoft_365_multiple_failed_login_attempts
+  timespan: 30m
+  aggregation:
+      field: azure.signinlogs.properties.user_principal_name
+      aggr_values:
+          - source.ip: 20
+          - count(): 20
+falsepositives:
+    - Automated services with misconfigured credentials
+    - Password resets affecting multiple services
+    - Large scale legitimate authentication attempts during service outages
+level: medium
+tags:
+    - attack.initial_access
+    - attack.t1110 # Brute Force
+    - attack.t1110.001 # Password Guessing
+references:
+    - https://learn.microsoft.com/en-us/entra/identity-platform/reference-error-codes
+fields:
+    - azure.signinlogs.properties.user_principal_name
+    - source.ip
+    - event.outcome
+    - azure.signinlogs.properties.resource_display_name
