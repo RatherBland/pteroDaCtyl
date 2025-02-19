@@ -1,0 +1,28 @@
+title = "Per organisation configuration file"
+
+[environments]
+
+[environments.acme.platform.elastic]
+
+kibana_workspace_name = "ACME"
+query_language = "esql"
+username = "elastic"
+password = "changeme"
+
+[environments.acme.platform.elastic.logs.azure]
+
+indexes = ["logs-azure-*-acme"]
+
+[environments.acme.platform.elastic.logs.cloudtrail]
+
+indexes = ["logs-aws.cloudtrail-*-acme"]
+
+
+[environments.ecorp.platform.splunk]
+
+username = "admin"
+password = "dontchangeme"
+
+[environments.ecorp.platform.splunk.logs.cloudtrail]
+
+indexes = ["cloudtrail"]

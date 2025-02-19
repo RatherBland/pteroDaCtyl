@@ -3,7 +3,7 @@ name: microsoft_365_multiple_failed_login_attempts
 id: 5f234c89-7c13-4c8a-9f1a-b543edf23e89
 status: experimental
 description: Detects potential brute force attempts against Microsoft 365 services by monitoring failed authentication attempts from multiple sources or high volumes of failed logins
-author: Claude
+author: user
 date: 2025-02-17
 logsource:
     product: azure
@@ -52,3 +52,4 @@ tags:
     - attack.t1110.001 # Password Guessing
 references:
     - https://learn.microsoft.com/en-us/entra/identity-platform/reference-error-codes
+    - https://elastic.github.io/detection-rules-explorer/rules/26f68dba-ce29-497b-8e13-b4fde1db5a2d

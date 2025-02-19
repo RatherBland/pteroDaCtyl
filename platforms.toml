@@ -5,12 +5,16 @@ title = "This is generic configuration for each SIEM platform. It is treated as 
 
 [platforms.elastic]
 
-auth_method = "basic"
+username = "elastic"
+password = "changeme"
+
 kibana_base_url = "https://192.168.86.108:5601"
 kibana_workspace_name = "Default"
 elasticsearch_hosts = [
     "https://192.168.86.108:9200"
 ]
+
+ssl_verify = false
 
 schedule_interval = 5
 schedule_interval_unit = "m"
@@ -34,6 +38,12 @@ indexes = ["logs-azure"]
 [platforms.splunk]
 
 query_language = "splunk"
+ssl_verify = false
+username = "admin"
+password = "dontchangeme"
+host = "192.168.86.106"
+port = 8089
+
 
 [platforms.splunk.logs.cloudtrail]
 

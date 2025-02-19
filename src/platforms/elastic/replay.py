@@ -7,21 +7,50 @@ import json
 from elasticsearch import helpers
 
 
-def delete_all():
-    client = Elasticsearch("https://192.168.86.108:9200", basic_auth=("elastic", "changeme"), verify_certs=False)
+class ElasticPlatform():
+    
+    def __init__(self, config):
+            self._hosts = config.get('elasticsearch_hosts', [])
+            self._username = config.get('username', None)
+            self._password = config.get('password', None)
+            self._basic_auth = (self._username, self._password)
+            self._api_key = config.get('api_key', None)
+            self._tls_verify = config.get('ssl_verify', True)
+            
+    
+    def client(self):
+        return Elasticsearch(
+        hosts=self._hosts,
+        basic_auth=self._basic_auth,
+        api_key=self._api_key,
+        verify_certs=self._tls_verify
+    )
+    
+
+
+def delete_all(config):
+    
+    elastic = ElasticPlatform(config)
+        
+    client = elastic.client()
+    
     client.delete_by_query(index="*", body={"query": {"match_all": {}}})
 
 
-def index_query_delete(data: str, index: str, query: str, wait: int = 2) -> int:
-    # delete_all()
-    client = Elasticsearch("https://192.168.86.108:9200", basic_auth=("elastic", "changeme"), verify_certs=False)
+def index_query_delete(data: str, index: str, query: str, config: dict, wait: int = 2,) -> int:
+    
+    elastic = ElasticPlatform(config)
+        
+    client = elastic.client()
     
     data = json.loads(data)
     
     document_ids = []
     logger.info(f"Adding document(s) to index: {index}")
     actions = []
-    for doc in data:
+    data_list = data if isinstance(data, list) else [data]
+
+    for doc in data_list:
         doc_id = str(uuid.uuid4())
         actions.append({
             "_index": index,
@@ -29,6 +58,7 @@ def index_query_delete(data: str, index: str, query: str, wait: int = 2) -> int:
             "_source": doc
         })
         document_ids.append(doc_id)
+
     try:
         helpers.bulk(client, actions)
     except ElasticConnectionError:
@@ -43,5 +73,7 @@ def index_query_delete(data: str, index: str, query: str, wait: int = 2) -> int:
 
     for doc_id in document_ids:
         client.delete(index=index, id=doc_id)
+    
+    # delete_all(config)
 
     return result_count

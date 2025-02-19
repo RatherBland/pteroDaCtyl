@@ -4,6 +4,7 @@ from logger import logger
 from pydantic import ValidationError
 from platforms import elastic, splunk
 from convert import Conversion
+import copy
 
 
 def validate_test_schema(rule: dict, platforms: list) -> Optional[Dict[str, Any]]:
@@ -51,6 +52,9 @@ def test_rules(rules: list[dict], platform_config: Dict[str, Any]) -> Optional[D
     
     platform_functions = {"elastic": elastic.replay.index_query_delete, "splunk": splunk.replay.index_query_delete}
     
+    successful_tests = []
+    failed_tests = []
+    warning_tests = []
     
     for rule in rules:
         validated_rule = validate_test_schema(rule, platforms)
@@ -72,17 +76,56 @@ def test_rules(rules: list[dict], platform_config: Dict[str, Any]) -> Optional[D
                     result_count = platform_functions[platform](
                         data=data,
                         index=index,
-                        query=converted_rule[0]
+                        query=converted_rule[0],
+                        config=platform_config['platforms'][platform]
 
                     )
+                    test_rule = copy.deepcopy(rule)
+                    test_rule['platform'] = platform
                     if result_count == rule_tests['platforms'][platform]['true_positive_test_raw']['hits']:
                         logger.info(
                             f"Rule: {validated_rule['path']} tested successfully on platform: {platform} with result count: {result_count}"
                         )
+                        test_rule['reason'] = f"Expected: {rule_tests['platforms'][platform]['true_positive_test_raw']['hits']}, Actual: {result_count}"
+                        successful_tests.append(test_rule)
                     else:
                         logger.error(
                             f"Rule: {validated_rule['path']} failed to test on platform: {platform} with result count: {result_count}. Expected: {rule_tests['platforms'][platform]['true_positive_test_raw']['hits']}"
                         )
+                        test_rule['reason'] = f"Expected: {rule_tests['platforms'][platform]['true_positive_test_raw']['hits']}, Actual: {result_count}"
+                        failed_tests.append(test_rule)
+                        
+    # Print tables for successful and failed tests
+
+    
+    # Determine dynamic width for the path column based on the largest path plus 5 spaces
+    all_paths = [test['path'] for test in successful_tests + failed_tests]
+    max_path_len = max((len(path) for path in all_paths), default=0) + 5
+
+    # Successful Tests Table
+    print("\nSuccessful Tests:")
+    if successful_tests:
+        header = f"{'Path':<{max_path_len}} {'Platform':<15} {'Result':<15} {'Success Reason':<15}"
+        separator = "-" * len(header)
+        print(header)
+        print(separator)
+        for test in successful_tests:
+            print(f"{test['path']:<{max_path_len}} {test['platform']:<15} {'Passed':<15} {test['reason']:<15}")
+    else:
+        print("No successful tests.")
+
+    # Failed Tests Table
+    print("\nFailed Tests:")
+    if failed_tests:
+        header = f"{'Path':<{max_path_len}} {'Platform':<15} {'Result':<15} {'Failure Reason':<15}"
+        separator = "-" * len(header)
+        print(header)
+        print(separator)
+        for test in failed_tests:
+            print(f"{test['path']:<{max_path_len}} {test['platform']:<15} {'Failed':<15} {test['reason']:<15}")
+    else:
+        print("No failed tests.")
+    
                 # except Exception as e:
                 #     logger.error(
                 #         f"Rule: {validated_rule['path']} failed to test on platform: {platform} with error: {e}"

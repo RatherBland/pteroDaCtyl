@@ -1,13 +1,14 @@
-import tomllib
+# import tomllib
+from dynaconf import Dynaconf
 
-def load_organisations_config(filename="organisations.toml"):
-    with open(filename, "rb") as f:
-        return tomllib.load(f)
+def load_environments_config(filename="environments.toml"):
+
+    return Dynaconf(settings_files=[filename], envvar_prefix="ENVIRONMENTS", load_dotenv=True)
 
 def load_pterodactyl_config(filename="pterodactyl.toml"):
-    with open(filename, "rb") as f:
-        return tomllib.load(f)
+    
+    return Dynaconf(settings_files=[filename], envvar_prefix="PTERODACTYL", load_dotenv=True)
     
 def load_platform_config(filename="platforms.toml"):
-    with open(filename, "rb") as f:
-        return tomllib.load(f)
+    
+    return Dynaconf(settings_files=[filename], envvar_prefix="PLATFORMS", load_dotenv=True)

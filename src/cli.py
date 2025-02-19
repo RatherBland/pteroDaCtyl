@@ -1,4 +1,4 @@
-from config import load_organisations_config, load_pterodactyl_config, load_platform_config
+from config import load_environments_config, load_pterodactyl_config, load_platform_config
 from convert import convert_rules
 from test import test_rules
 import argparse
@@ -6,7 +6,7 @@ from utils import load_rules
 
 
 def main():
-    organisations_config = load_organisations_config()
+    environments_config = load_environments_config()
     pterodactyl_config = load_pterodactyl_config()
     platform_config = load_platform_config()
     
@@ -32,7 +32,7 @@ def main():
     if args.command == 'validate':
         test_rules(load_rules(path_to_rules), platform_config)
     elif args.command == 'compile':
-        print(convert_rules(load_rules(path_to_rules), organisations_config, platform_config))
+        print(convert_rules(load_rules(path_to_rules), environments_config, platform_config))
 
     else:
         parser.print_help()
