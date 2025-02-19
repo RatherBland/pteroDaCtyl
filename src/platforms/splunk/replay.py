@@ -14,22 +14,25 @@ class SplunkPlatform:
         self._username = config.get('username')
         self._password = config.get('password')
         self._ssl_verify = config.get('ssl_verify', True)
+        self._client = None  # Cache for the client
 
+    @property
     def client(self):
-        try:
-            service = client.connect(
-                host=self._host,
-                port=self._port,
-                username=self._username,
-                password=self._password,
-                verify=self._ssl_verify
-            )
-        except Exception as e:
-            logger.error(f"Failed to connect to the Splunk service: {e}")
-            raise
-        return service
+        if self._client is None:
+            try:
+                self._client = client.connect(
+                    host=self._host,
+                    port=self._port,
+                    username=self._username,
+                    password=self._password,
+                    verify=self._ssl_verify
+                )
+            except Exception as e:
+                logger.error(f"Failed to connect to the Splunk client: {e}")
+                raise
+        return self._client
 
-def delete_all_documents(index: str, config: dict, wait: int = 2) -> None:
+def delete_all_documents(index: str, client: SplunkPlatform, wait: int = 2) -> None:
     """
     Deletes all documents from the given Splunk index.
     
@@ -38,13 +41,11 @@ def delete_all_documents(index: str, config: dict, wait: int = 2) -> None:
         config: A dictionary containing the Splunk connection configuration.
         wait: Time (in seconds) to wait between polling job status.
     """
-    splunk = SplunkPlatform(config)
-    service = splunk.client()
 
     # Create a deletion job that targets all events from the index.
     delete_query = f"search index={index} | delete"
     try:
-        delete_job = service.jobs.create(delete_query)
+        delete_job = client.jobs.create(delete_query)
     except Exception as e:
         logger.error(f"Failed to create delete job: {e}")
         return
@@ -70,7 +71,7 @@ def index_query_delete(index: str, data, query: str, config: dict, wait: int = 2
         The number of search result events returned.
     """
     splunk = SplunkPlatform(config)
-    service = splunk.client()
+    client = splunk.client
 
     # Create a unique cleanup identifier for the batch.
     
@@ -79,9 +80,9 @@ def index_query_delete(index: str, data, query: str, config: dict, wait: int = 2
     data = json.loads(data)
 
     # Ensure the index exists or create it
-    if index not in service.indexes:
-        service.indexes.create(index)
-    index_obj = service.indexes[index]
+    if index not in client.indexes:
+        client.indexes.create(index)
+    index_obj = client.indexes[index]
     
     data_list = data if isinstance(data, list) else [data]
 
@@ -99,20 +100,41 @@ def index_query_delete(index: str, data, query: str, config: dict, wait: int = 2
     time.sleep(wait)
 
     logger.info(f"Executing query: {query}")
-    job = service.jobs.create(f"search {query}")
+    job = client.jobs.create(f"search {query}")
     while not job.is_done():
         time.sleep(wait)
 
     rr = results.ResultsReader(job.results())
     result_count = sum(1 for _ in rr)
+    
     # Cleanup: delete only the event(s) with our unique cleanup_id.
     cleanup_ids_str = ", ".join(f"\"{cid}\"" for cid in cleanup_ids)
     delete_query = f"search index={index} | where cleanup_id IN ({cleanup_ids_str}) | delete"
     print(delete_query)
-    delete_job = service.jobs.create(delete_query)
+    delete_job = client.jobs.create(delete_query)
     while not delete_job.is_done():
         time.sleep(wait)
         
-    # delete_all_documents(index, config)
+    # delete_all_documents(index, client)
 
     return result_count
+
+def count_docs(index: str, config: dict) -> int:
+    """
+    Counts the number of documents in a Splunk index.
+    
+    Args:
+        index: The target Splunk index.
+        config: A dictionary containing the Splunk connection configuration.
+        
+    Returns:
+        The number of documents in the index.
+    """
+    splunk = SplunkPlatform(config)
+    client = splunk.client
+
+    if index not in client.indexes:
+        return 0
+
+    index_obj = client.indexes[index]
+    return index_obj.totalEventCount

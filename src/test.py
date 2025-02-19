@@ -54,10 +54,11 @@ def test_rules(rules: list[dict], platform_config: Dict[str, Any]) -> Optional[D
     
     successful_tests = []
     failed_tests = []
-    warning_tests = []
+    other_tests = []
     
     for rule in rules:
         validated_rule = validate_test_schema(rule, platforms)
+        
         
         for platform in platforms:
             if validated_rule:
@@ -66,6 +67,8 @@ def test_rules(rules: list[dict], platform_config: Dict[str, Any]) -> Optional[D
                 sigma_rule = conversion.init_sigma_rule(rule['path'])
                 converted_rule = conversion.convert_rule(rule['raw'][0], sigma_rule)
                 pipeline_group = conversion.get_pipeline_config_group(rule['raw'][0])
+                test_rule = copy.deepcopy(rule)
+                test_rule['platform'] = platform
                 if converted_rule:
                     
                     rule_tests = rule['raw'][0].get('tests') if rule['raw'][0].get('tests') else rule['raw'][1].get('tests')
@@ -80,8 +83,7 @@ def test_rules(rules: list[dict], platform_config: Dict[str, Any]) -> Optional[D
                         config=platform_config['platforms'][platform]
 
                     )
-                    test_rule = copy.deepcopy(rule)
-                    test_rule['platform'] = platform
+                    
                     if result_count == rule_tests['platforms'][platform]['true_positive_test_raw']['hits']:
                         logger.info(
                             f"Rule: {validated_rule['path']} tested successfully on platform: {platform} with result count: {result_count}"
@@ -94,20 +96,27 @@ def test_rules(rules: list[dict], platform_config: Dict[str, Any]) -> Optional[D
                         )
                         test_rule['reason'] = f"Expected: {rule_tests['platforms'][platform]['true_positive_test_raw']['hits']}, Actual: {result_count}"
                         failed_tests.append(test_rule)
+                else:
+                    test_rule['reason'] = "Rule could not be converted"
+                    other_tests.append(test_rule)
+            else:
+                rule['reason'] = "Test schema validation failed"
+                other_tests.append(rule)
+                    
                         
     # Print tables for successful and failed tests
 
     
     # Determine dynamic width for the path column based on the largest path plus 5 spaces
-    all_paths = [test['path'] for test in successful_tests + failed_tests]
+    all_paths = [test['path'] for test in successful_tests + failed_tests + other_tests]
     max_path_len = max((len(path) for path in all_paths), default=0) + 5
 
     # Successful Tests Table
     print("\nSuccessful Tests:")
+    header = f"{'Path':<{max_path_len}} {'Platform':<15} {'Result':<15} {'Success Reason':<15}"
+    separator = "-" * len(header)
+    print(header)
     if successful_tests:
-        header = f"{'Path':<{max_path_len}} {'Platform':<15} {'Result':<15} {'Success Reason':<15}"
-        separator = "-" * len(header)
-        print(header)
         print(separator)
         for test in successful_tests:
             print(f"{test['path']:<{max_path_len}} {test['platform']:<15} {'Passed':<15} {test['reason']:<15}")
@@ -116,17 +125,28 @@ def test_rules(rules: list[dict], platform_config: Dict[str, Any]) -> Optional[D
 
     # Failed Tests Table
     print("\nFailed Tests:")
+    header = f"{'Path':<{max_path_len}} {'Platform':<15} {'Result':<15} {'Failure Reason':<15}"
+    separator = "-" * len(header)
+    print(header)
+    print(separator)
     if failed_tests:
-        header = f"{'Path':<{max_path_len}} {'Platform':<15} {'Result':<15} {'Failure Reason':<15}"
-        separator = "-" * len(header)
-        print(header)
-        print(separator)
+        
         for test in failed_tests:
             print(f"{test['path']:<{max_path_len}} {test['platform']:<15} {'Failed':<15} {test['reason']:<15}")
     else:
         print("No failed tests.")
     
+    print("\nOther Tests:")
+    if other_tests:
+        header = f"{'Path':<{max_path_len}} {'Platform':<15} {'Result':<15} {'Other Reason':<15}"
+        separator = "-" * len(header)
+        print(header)
+        print(separator)
+        for test in other_tests:
+            print(f"{test['path']:<{max_path_len}} {test['platform']:<15} {'Failed':<15} {test['reason']:<15}")
+    
                 # except Exception as e:
                 #     logger.error(
                 #         f"Rule: {validated_rule['path']} failed to test on platform: {platform} with error: {e}"
                 #     )
+    print("\nTesting complete.\n")
