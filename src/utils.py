@@ -1,7 +1,7 @@
 from typing import Any, Dict, List
 from pathlib import Path
 import yaml
-
+import json
 
 
 def load_rules(path_to_rules: str) -> List[Dict[str, Any]]:
@@ -25,6 +25,7 @@ def load_rules(path_to_rules: str) -> List[Dict[str, Any]]:
             for rule_file in path.rglob("*.y*ml")
         ]
     return files
+
     
 def deep_merge(primary: dict, secondary: dict) -> dict:
     """
@@ -43,3 +44,23 @@ def deep_merge(primary: dict, secondary: dict) -> dict:
         else:
             result[key] = value
     return result
+
+
+def write_converted_rule(rule_data: dict, environment: str, platform: str, directory: str, filename: str, output_dir: str = "output") -> None:
+    """
+    Write the converted rule to a file following the format:
+    output/<environment>/<platform>/<directory>/<rule>
+    
+    Parameters:
+    rule_data (dict): The rule content to write.
+    environment (str): The environment name.
+    platform (str): The platform name.
+    directory (str): A subdirectory name.
+    filename (str): The name of the rule file (e.g., "example.yaml").
+    """
+
+    output_path = Path(f"{output_dir}/{environment}/{platform}/{directory}")
+    output_path.mkdir(parents=True, exist_ok=True)
+    file_path = Path(f"{output_path}/{filename}.yaml")
+    with file_path.open("w") as f:
+        yaml.dump(json.loads(rule_data), f)

@@ -24,14 +24,14 @@ query_language = "esql"
 
 # The separation of query_pipelines and pipelines is to allow for the use of a query pipeline for the initial query (primarily for pre-compilation testing) and then a pipeline for the subsequent processing of the data most often to format the output into a useable detection by the output platform (Elastic, Splunk, Sentinel, etc).
 query_pipelines = ["pipelines/elastic/aws/ecs_cloudtrail.yml"]
-pipelines = ["pipelines/elastic/aws/esql_ndjson_cloudtrail.yml"]
-product = "cloudtrail"
+pipelines = ["pipelines/elastic/aws/esql_ndjson.yml"]
+service = "cloudtrail"
 indexes = ["logs-aws.cloudtrail"]
 
 [platforms.elastic.logs.azure]
 
 query_pipelines = []
-pipelines = ["pipelines/elastic/aws/esql_ndjson_cloudtrail.yml"]
+pipelines = ["pipelines/elastic/aws/esql_ndjson.yml"]
 product = "azure"
 indexes = ["logs-azure"]
 
@@ -49,7 +49,7 @@ port = 8089
 
 query_pipelines = []
 pipelines = []
-product = "cloudtrail"
+service = "cloudtrail"
 indexes = ["cloudtrail"]
 
 # [platforms.sentinel]

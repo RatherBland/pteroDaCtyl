@@ -112,52 +112,102 @@ class Conversion:
 
 def convert_rules(
     rules: list[dict],
-    organisations_config: Dict[str, Any],
+    environments_config: Dict[str, Any],
     platform_config: Dict[str, Any],
 ) -> list[str]:
     logger.info("Starting conversion of sigma rules")
-    organisations = organisations_config["organisations"]
-    
+    environments = environments_config["environments"]
     converted_rules = []
 
-    for organisation, org_data in organisations.items():
-        platforms = org_data.get("platform")
-        if platforms:
-            for platform, platform_data in platforms.items():
-                logger.info(f"Processing organisation '{organisation}' for platform '{platform}'")
-                org_platform_rule_config = deep_merge(
-                    organisations[organisation]["platform"][platform],
-                    platform_config["platforms"][platform]
-                )
-                logs = platform_data["logs"].keys()
-                for log in logs:
-                    matching_rules = [
-                        rule
-                        for rule in rules
-                        if log
-                        in {
-                            rule["raw"][0]["logsource"].get("product"),
-                            rule["raw"][0]["logsource"].get("service"),
-                            rule["raw"][0]["logsource"].get("category"),
-                        }
-                    ]
-                    logger.info(f"Found {len(matching_rules)} matching rule(s) for log '{log}' in organisation '{organisation}'")
-                    for rule in matching_rules:
-                        rule_organisations = rule['raw'][0].get("organisations") if rule['raw'][0].get("organisations") else rule['raw'][1].get("organisations")
-                        if rule_organisations and organisation not in rule_organisations:
-                            logger.info(f"Skipping rule '{rule['raw'][0].get('title', 'Unknown title')}' as organisation '{organisation}' is not in the permitted list")
-                            continue
+    for environment, env_data in environments.items():
+        platforms = env_data.get("platform")
+        if not platforms:
+            continue
 
-                        conversion = Conversion(org_platform_rule_config, organisation)
-                        logger.info(f"Initialized Conversion for organisation '{organisation}'")
-                        sigma_rule = conversion.init_sigma_rule(
-                            Path(rule["path"]),
-                            Path(f"organisations/{organisation}/filters")
+        for platform, platform_data in platforms.items():
+            logger.info(
+                f"Processing environment '{environment}' for platform '{platform}'"
+            )
+
+            # Merge platform configuration for the current environment
+            env_platform_rule_config = deep_merge(
+                environments[environment]["platform"][platform],
+                platform_config["platforms"][platform],
+            )
+            logs = platform_data["logs"].keys()
+
+            for log in logs:
+                # Filter rules matching the current log by comparing logsource fields
+                matching_rules = [
+                    rule
+                    for rule in rules
+                    if log
+                    in {
+                        rule["raw"][0]["logsource"].get("product"),
+                        rule["raw"][0]["logsource"].get("service"),
+                        rule["raw"][0]["logsource"].get("category"),
+                    }
+                ]
+                logger.info(
+                    f"Found {len(matching_rules)} matching rule(s) for log '{log}' in environment '{environment}'"
+                )
+
+                for rule in matching_rules:
+                    rule_raw = rule["raw"][0]
+                    rule_environments = rule_raw.get("environments")
+                    rule_directory = rule_raw.get("directory", rule_raw["logsource"].get("product", log))
+
+                    if rule_environments and environment not in rule_environments:
+                        logger.info(
+                            f"Skipping rule '{rule_raw.get('title', 'Unknown title')}' as environment '{environment}' is not in the permitted list"
                         )
-                        result = conversion.convert_rule(rule["raw"], sigma_rule)
-                        if result is not None:
-                            logger.info(f"Rule converted successfully for organisation '{organisation}'")
-                        else:
-                            logger.error(f"Failed to convert rule for organisation '{organisation}'")
-                        converted_rules.extend(result)
+                        continue
+
+                    conversion = Conversion(env_platform_rule_config)
+                    logger.info(f"Initialized Conversion for environment '{environment}'")
+
+                    sigma_rule = conversion.init_sigma_rule(
+                        Path(rule["path"]),
+                        Path(f"environments/{environment}/filters")
+                    )
+                    result = conversion.convert_rule(rule["raw"], sigma_rule)
+
+                    if result is not None:
+                        logger.info(f"Rule converted successfully for environment '{environment}'")
+
+                        result_dict = {
+                            "environment": environment,
+                            "platform": platform,
+                            "directory": rule_directory,
+                            "name": rule_raw.get("name", rule_raw.get("id")),
+                            "rule": result[0],
+                            
+                        }
+                        converted_rules.append(result_dict)
+                    else:
+                        logger.error(f"Failed to convert rule for environment '{environment}'")
+
+    # if converted_rules:
+    #     headers = ["name", "environment", "platform", "directory", "rule"]
+    #     # Calculate maximum width for each column
+    #     widths = {h: len(h) for h in headers}
+    #     for rule in converted_rules:
+    #         for h in headers:
+    #             widths[h] = max(widths[h], len(str(rule[h])))
+
+    #     # Create header and separator rows
+    #     header_row = " | ".join(h.ljust(widths[h]) for h in headers)
+    #     separator = "-+-".join("-" * widths[h] for h in headers)
+
+    #     print("\n")
+    #     print(header_row)
+    #     print(separator)
+
+    #     # Print each row with proper alignment
+    #     for rule in converted_rules:
+    #         row = " | ".join(str(rule[h]).ljust(widths[h]) for h in headers)
+    #         print(row)
+    # else:
+    #     print("No converted rules to display.")
+
     return converted_rules

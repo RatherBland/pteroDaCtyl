@@ -2,7 +2,7 @@ from config import load_environments_config, load_pterodactyl_config, load_platf
 from convert import convert_rules
 from test import test_rules
 import argparse
-from utils import load_rules
+from utils import load_rules, write_converted_rule
 
 
 def main():
@@ -23,6 +23,7 @@ def main():
     
     convert_parser = subparsers.add_parser('compile', help='Compile detection rules to security platforms format')
     convert_parser.add_argument('-f', '--file', help='The path to the detection to convert', required=False)
+    convert_parser.add_argument('-o', '--output', help='The path to the output directory', required=False)
     
     args = parser.parse_args()
     
@@ -34,7 +35,10 @@ def main():
     if args.command == 'validate':
         test_rules(rules=load_rules(path_to_rules), platform_config=platform_config, specific_platform=args.platform)
     elif args.command == 'compile':
-        print(convert_rules(load_rules(path_to_rules), environments_config, platform_config))
+        output_rules = convert_rules(load_rules(path_to_rules), environments_config, platform_config)
+        if args.output:
+            for rule in output_rules:
+                write_converted_rule(rule['rule'], rule['environment'], rule['platform'], rule['directory'], rule['name'], output_dir=args.output)
 
     else:
         parser.print_help()
