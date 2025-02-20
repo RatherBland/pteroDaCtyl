@@ -46,11 +46,22 @@ def validate_test_schema(rule: dict, platforms: list) -> Optional[Dict[str, Any]
     return None
 
 
-def test_rules(rules: list[dict], platform_config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def test_rules(rules: list[dict], platform_config: Dict[str, Any], specific_platform: Optional[str] = None) -> Optional[Dict[str, Any]]:
     
-    platforms = list(platform_config['platforms'].keys())
+    # Determine the platforms to test: either a specific platform or all platforms in config
+    if specific_platform:
+        if specific_platform in platform_config['platforms']:
+            platforms = [specific_platform]
+        else:
+            logger.error(f"Platform {specific_platform} is not available in the platform configuration.")
+            return None
+    else:
+        platforms = list(platform_config['platforms'].keys())
     
-    platform_functions = {"elastic": elastic.replay.index_query_delete, "splunk": splunk.replay.index_query_delete}
+    platform_functions = {
+        "elastic": elastic.replay.index_query_delete,
+        "splunk": splunk.replay.index_query_delete
+    }
     
     successful_tests = []
     failed_tests = []
@@ -59,10 +70,8 @@ def test_rules(rules: list[dict], platform_config: Dict[str, Any]) -> Optional[D
     for rule in rules:
         validated_rule = validate_test_schema(rule, platforms)
         
-        
         for platform in platforms:
             if validated_rule:
-                # try:
                 conversion = Conversion(config=platform_config['platforms'][platform], testing=True)
                 sigma_rule = conversion.init_sigma_rule(rule['path'])
                 converted_rule = conversion.convert_rule(rule['raw'][0], sigma_rule)
@@ -70,7 +79,6 @@ def test_rules(rules: list[dict], platform_config: Dict[str, Any]) -> Optional[D
                 test_rule = copy.deepcopy(rule)
                 test_rule['platform'] = platform
                 if converted_rule:
-                    
                     rule_tests = rule['raw'][0].get('tests') if rule['raw'][0].get('tests') else rule['raw'][1].get('tests')
                     
                     data = rule_tests['platforms'][platform]['true_positive_test_raw']['attack_data']['data']
@@ -81,7 +89,6 @@ def test_rules(rules: list[dict], platform_config: Dict[str, Any]) -> Optional[D
                         index=index,
                         query=converted_rule[0],
                         config=platform_config['platforms'][platform]
-
                     )
                     
                     if result_count == rule_tests['platforms'][platform]['true_positive_test_raw']['hits']:
@@ -103,10 +110,6 @@ def test_rules(rules: list[dict], platform_config: Dict[str, Any]) -> Optional[D
                 rule['reason'] = "Test schema validation failed"
                 other_tests.append(rule)
                     
-                        
-    # Print tables for successful and failed tests
-
-    
     # Determine dynamic width for the path column based on the largest path plus 5 spaces
     all_paths = [test['path'] for test in successful_tests + failed_tests + other_tests]
     max_path_len = max((len(path) for path in all_paths), default=0) + 5
@@ -130,12 +133,12 @@ def test_rules(rules: list[dict], platform_config: Dict[str, Any]) -> Optional[D
     print(header)
     print(separator)
     if failed_tests:
-        
         for test in failed_tests:
             print(f"{test['path']:<{max_path_len}} {test['platform']:<15} {'Failed':<15} {test['reason']:<15}")
     else:
         print("No failed tests.")
     
+    # Other Tests Table
     print("\nOther Tests:")
     if other_tests:
         header = f"{'Path':<{max_path_len}} {'Platform':<15} {'Result':<15} {'Other Reason':<15}"
@@ -145,8 +148,4 @@ def test_rules(rules: list[dict], platform_config: Dict[str, Any]) -> Optional[D
         for test in other_tests:
             print(f"{test['path']:<{max_path_len}} {test['platform']:<15} {'Failed':<15} {test['reason']:<15}")
     
-                # except Exception as e:
-                #     logger.error(
-                #         f"Rule: {validated_rule['path']} failed to test on platform: {platform} with error: {e}"
-                #     )
     print("\nTesting complete.\n")

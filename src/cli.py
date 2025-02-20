@@ -15,9 +15,11 @@ def main():
 
     validate_parser = subparsers.add_parser('validate', help='Validate detection rules against available security platforms')
     validate_parser.add_argument('-f', '--file', help='The path to the detection to validate', required=False)
+    validate_parser.add_argument('-p', '--platform', help='The platform to validate against', required=False)
+    
     validate_group = validate_parser.add_mutually_exclusive_group(required=True)
-    validate_group.add_argument('-p', '--pre-compilation', help='Validate tests schema and query against test data. Does not factor in organisation level exceptions. Primary purpose is to validate that detection logic is sound against a predefined data set. ', action='store_true')
-    validate_group.add_argument('-l', '--post-compilation', help='Execute rules against a live environment. Will include organisation level exceptions. Primary purpose is to identify how many false positives will be seen in an uncontrolled environment', action='store_true')
+    validate_group.add_argument('--pre-compilation', help='Validate tests schema and query against test data. Does not factor in organisation level exceptions. Primary purpose is to validate that detection logic is sound against a predefined data set. ', action='store_true')
+    validate_group.add_argument('--post-compilation', help='Execute rules against a live environment. Will include organisation level exceptions. Primary purpose is to identify how many false positives will be seen in an uncontrolled environment', action='store_true')
     
     convert_parser = subparsers.add_parser('compile', help='Compile detection rules to security platforms format')
     convert_parser.add_argument('-f', '--file', help='The path to the detection to convert', required=False)
@@ -30,7 +32,7 @@ def main():
         path_to_rules = pterodactyl_config["base"]["sigma_rules_directory"]
         
     if args.command == 'validate':
-        test_rules(load_rules(path_to_rules), platform_config)
+        test_rules(rules=load_rules(path_to_rules), platform_config=platform_config, specific_platform=args.platform)
     elif args.command == 'compile':
         print(convert_rules(load_rules(path_to_rules), environments_config, platform_config))
 
