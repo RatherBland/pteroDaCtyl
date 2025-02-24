@@ -1,0 +1,26 @@
+title: AWS IAM Administrator Policy Attachment
+name: aws_iam_administrator_policy_attachment
+id: b5402538-28e1-4286-947c-5ed053fea64f
+status: experimental
+description: Detects when an AWS IAM Administrator policy is attached to a role
+references:
+    - https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html
+author: user
+date: 2025-02-23
+logsource:
+    product: aws
+    service: cloudtrail
+    category: security
+detection: |-
+  from logs-aws.cloudtrail-* metadata _id, _version, _index
+  | where event.provider == "iam.amazonaws.com" and event.action == "AttachRolePolicy" and event.outcome == "success"
+  | dissect aws.cloudtrail.request_parameters "{%{?policyArn}=%{?arn}:%{?aws}:%{?iam}::%{?aws}:%{?policy}/%{policyName},%{?roleName}=%{role.name}}"
+  | where policyName == "AdministratorAccess"
+  | keep @timestamp, event.provider, event.action, event.outcome, policyName, role.name
+raw: true
+falsepositives:
+    - Legitimate administrator role creation by authorized personnel
+level: high
+tags:
+    - attack.privilege_escalation
+    - attack.t1078

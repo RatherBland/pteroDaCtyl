@@ -3,6 +3,7 @@ from convert import convert_rules
 from test import test_rules
 import argparse
 from utils import load_rules, write_converted_rule
+from platforms.elastic.deploy import deploy_rules
 
 
 def main():
@@ -25,6 +26,13 @@ def main():
     convert_parser.add_argument('-f', '--file', help='The path to the detection to convert', required=False)
     convert_parser.add_argument('-o', '--output', help='The path to the output directory', required=False)
     
+    deploy_parser = subparsers.add_parser('deploy', help='Deploy detection rules to security platforms')
+    deploy_parser.add_argument('-f', '--file', help='The path to the detection to deploy', required=False)
+    deploy_parser.add_argument('-p', '--platform', help='The platform to deploy to', required=False)
+    deploy_parser.add_argument('-e', '--environment', help='Environment or organisation to deploy to', required=False)
+    
+    
+    
     args = parser.parse_args()
     
     if hasattr(args, 'file') and args.file:
@@ -33,13 +41,21 @@ def main():
         path_to_rules = pterodactyl_config["base"]["sigma_rules_directory"]
         
     if args.command == 'validate':
-        test_rules(rules=load_rules(path_to_rules), platform_config=platform_config, specific_platform=args.platform)
+        if args.pre_compilation:
+            test_rules(rules=load_rules(path_to_rules), platform_config=platform_config, specific_platform=args.platform)
+            
     elif args.command == 'compile':
         output_rules = convert_rules(load_rules(path_to_rules), environments_config, platform_config)
         if args.output:
             for rule in output_rules:
                 write_converted_rule(rule['rule'], rule['environment'], rule['platform'], rule['directory'], rule['name'], output_dir=args.output)
-
+                
+    elif args.command == 'deploy':
+        if args.platform and args.platform == 'elastic' and args.environment and args.file:
+            deploy_rules(rules=load_rules(args.file),
+                         environment_config=environments_config['environments'][args.environment]['platform'][args.platform],
+                         platform_config=platform_config['platforms'][args.platform])
+    
     else:
         parser.print_help()
     

@@ -21,8 +21,14 @@ detection:
 falsepositives:
   - As this is a general purpose rule, legitimate usage of the encode functionality will trigger some false positives. Apply additional filters accordingly
 level: medium
+fields:
+  - eventTime
+  - eventSource
+  - eventName
+  - errorMessage
 
-# organisations:
+
+# environments:
 #     - acme
 
 # platforms:
@@ -49,7 +55,7 @@ tests:
       true_positive_test_raw:
         hits: 1
         attack_data:
-          data: '[{"@timestamp":"2022-08-10T22:04:13Z","cloud":{"account":{"id":"111111111111"},"provider":"aws","region":"us-west-2"},"event":{"action":"GetPasswordData","category":["iam"],"kind":"event","outcome":"failure","type":["api"],"id":"0cdd3757-296a-4454-9619-d0f8be335081","created":"2022-08-10T22:04:13Z"},"user":{"id":"AROAYTOGP2RLP5AASA6I5:aws-go-sdk-1660169051746043000","name":"sample-role-used-by-stratus-for-ec2-password-data","roles":["sample-role-used-by-stratus-for-ec2-password-data"]},"source":{"address":"142.254.89.27","ip":"142.254.89.27"},"user_agent":{"original":"stratus-red-team_e3e4b259-63a4-4d89-acd5-a7286a279bb8"},"error":{"code":"Client.UnauthorizedOperation","message":"You are not authorized to perform this operation.","type":"authorization"},"aws":{"cloudtrail":{"event_version":"1.08","read_only":true,"recipient_account_id":"111111111111","request_id":"87368810-7b30-4ff9-b097-702778a53f22","user_identity":{"type":"AssumedRole","session_context":{"mfa_authenticated":"false","creation_date":"2022-08-10T22:04:12Z"}},"tls_details":{"tls_version":"TLSv1.2","cipher_suite":"ECDHE-RSA-AES128-GCM-SHA256","client_provided_host_header":"ec2.us-west-2.amazonaws.com"}}},"related":{"user":["sample-role-used-by-stratus-for-ec2-password-data"]}}]'
+          data: '[{"@timestamp":"2022-08-10T22:04:13Z","cloud":{"account":{"id":"111111111111"},"provider":"aws","region":"us-west-2"},"event":{"action":"GetPasswordData","category":["iam"],"kind":"event","outcome":"failure","type":["api"],"id":"0cdd3757-296a-4454-9619-d0f8be335081","created":"2022-08-10T22:04:13Z"},"user":{"id":"AROAYTOGP2RLP5AASA6I5:aws-go-sdk-1660169051746043000","name":"sample-role-used-by-stratus-for-ec2-password-data","roles":["sample-role-used-by-stratus-for-ec2-password-data"]},"user_agent":{"original":"stratus-red-team_e3e4b259-63a4-4d89-acd5-a7286a279bb8"},"source":{"ip":"142.254.89.27","address":"142.254.89.27"},"error":{"code":"Client.UnauthorizedOperation","message":"You are not authorized to perform this operation. Encoded authorization failure message: OwnXKlWs2vtfsyXhkYTFO35PfDwIeH4oGadP2dmbdguXBDpSfP-65XwZU4JdWht_u8p9BlgIZ0QOYIzmm5-ApXc7HsgOynmQvF4vFNUxxiuY0w-VRNBiuPmphwnJqYln8pTJogn0DfcleY5TIuDEFwmGvZHnGMmK1kXJ1VcUiQvbK_vuDpSqIDFz-jqcnOTjzsC4DXlTZkHLL1HEeNVIjI9HCEWYG4CuG9Ti8BQ0AnGVkU8oqvtS6iyVlnPI9oId5_AWpfmE1ijhNKbgFH77DjRn6QyR5rGkGYYFpvaIyMvX33Vti4RzfAyJdpuzMgp6tV-q_Rbh0ikwBJvUtiiGfmqzdQynfRNDQmXJ3ruifOjGmUz34M90SGFJKi5CVHGThtO3UWj9EqYXpKdu_JgTYEqxWvRBopB--V7tOap8XKuz7W3rWyHN2clHA0yooLZ3DV34LWgzzDp9Iv66829HSTwGz7h2P0sGdCNuV_FCxwQzWYa8f6_h1By90MvWUvmEDLSzOfA_PF6BcqCmV8XBiPUvCMPebDSGmPwSa371J5Yn2xEiuQadfuNYRLZnd2i1V_NF9ax67BdZ"},"aws":{"cloudtrail":{"event_version":"1.08","user_identity":{"type":"AssumedRole","principal_id":"AROAYTOGP2RLP5AASA6I5:aws-go-sdk-1660169051746043000","arn":"arn:aws:sts::111111111111:assumed-role/sample-role-used-by-stratus-for-ec2-password-data/aws-go-sdk-1660169051746043000","access_key_id":"ASIAYTOGP2RLLY5RQXEF","session_context":{"session_issuer":{"type":"Role","principal_id":"AROAYTOGP2RLP5AASA6I5","arn":"arn:aws:iam::111111111111:role/sample-role-used-by-stratus-for-ec2-password-data","account_id":"111111111111","user_name":"sample-role-used-by-stratus-for-ec2-password-data"},"attributes":{"creation_date":"2022-08-10T22:04:12Z","mfa_authenticated":"false"}}},"event_source":"ec2.amazonaws.com","request_parameters":{"instanceId":"i-7sap2krlslv6adrs"},"request_id":"87368810-7b30-4ff9-b097-702778a53f22","read_only":true,"event_type":"AwsApiCall","management_event":true,"recipient_account_id":"111111111111","event_category":"Management","tls_details":{"tls_version":"TLSv1.2","cipher_suite":"ECDHE-RSA-AES128-GCM-SHA256","client_provided_host_header":"ec2.us-west-2.amazonaws.com"}}},"related":{"ip":["142.254.89.27"],"user":["sample-role-used-by-stratus-for-ec2-password-data"]},"tls":{"version":"1.2","cipher":"ECDHE-RSA-AES128-GCM-SHA256"}}]'
           type: raw
           source: aws:cloudtrail
     splunk:

@@ -8,6 +8,7 @@ kibana_workspace_name = "ACME"
 query_language = "esql"
 username = "elastic"
 password = "changeme"
+kibana_base_url = "https://192.168.86.108:5601/"
 
 [environments.acme.platform.elastic.logs.azure]
 

@@ -70,7 +70,7 @@ def index_query_delete(data: str, index: str, query: str, config: dict, wait: in
     for doc_id in document_ids:
         client.delete(index=index, id=doc_id)
     
-    # delete_all(config)
+    # delete_all(client)
 
     return result_count
 

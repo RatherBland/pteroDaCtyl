@@ -5,8 +5,8 @@ title = "This is generic configuration for each SIEM platform. It is treated as 
 
 [platforms.elastic]
 
-username = "elastic"
-password = "changeme"
+# username = "elastic"
+# password = "changeme"
 
 kibana_base_url = "https://192.168.86.108:5601"
 kibana_workspace_name = "Default"

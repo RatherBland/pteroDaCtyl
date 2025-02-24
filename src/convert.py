@@ -186,28 +186,28 @@ def convert_rules(
                         converted_rules.append(result_dict)
                     else:
                         logger.error(f"Failed to convert rule for environment '{environment}'")
+    
+    if converted_rules:
+        headers = ["name", "environment", "platform", "directory", "rule"]
+        # Calculate maximum width for each column
+        widths = {h: len(h) for h in headers}
+        for rule in converted_rules:
+            for h in headers:
+                widths[h] = max(widths[h], len(str(rule[h])))
 
-    # if converted_rules:
-    #     headers = ["name", "environment", "platform", "directory", "rule"]
-    #     # Calculate maximum width for each column
-    #     widths = {h: len(h) for h in headers}
-    #     for rule in converted_rules:
-    #         for h in headers:
-    #             widths[h] = max(widths[h], len(str(rule[h])))
+        # Create header and separator rows
+        header_row = " | ".join(h.ljust(widths[h]) for h in headers)
+        separator = "-+-".join("-" * widths[h] for h in headers)
 
-    #     # Create header and separator rows
-    #     header_row = " | ".join(h.ljust(widths[h]) for h in headers)
-    #     separator = "-+-".join("-" * widths[h] for h in headers)
+        print("\n")
+        print(header_row)
+        print(separator)
 
-    #     print("\n")
-    #     print(header_row)
-    #     print(separator)
-
-    #     # Print each row with proper alignment
-    #     for rule in converted_rules:
-    #         row = " | ".join(str(rule[h]).ljust(widths[h]) for h in headers)
-    #         print(row)
-    # else:
-    #     print("No converted rules to display.")
+        # Print each row with proper alignment
+        for rule in converted_rules:
+            row = " | ".join(str(rule[h]).ljust(widths[h]) for h in headers)
+            print(row)
+    else:
+        print("No converted rules to display.")
 
     return converted_rules

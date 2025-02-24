@@ -7,4 +7,9 @@ transformations:
         - error.message
       userName:
         - user.name
-        
+      eventSource:
+        - aws.cloudtrail.event_source
+      eventName:
+        - event.action
+      eventTime:
+        - '@timestamp'
