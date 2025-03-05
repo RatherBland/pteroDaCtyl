@@ -6,81 +6,130 @@ from logger import logger
 import json
 from elasticsearch import helpers
 
+# Custom exceptions for better error handling
+class ElasticAuthenticationError(Exception):
+    """Raised when authentication credentials are missing or invalid."""
+    pass
+
+class ElasticConnectionFailure(Exception):
+    """Raised when connection to Elasticsearch fails."""
+    pass
+
 class ElasticPlatform:
     def __init__(self, config):
-        self._hosts = config.get('elasticsearch_hosts', [])
+        self._hosts = config['elasticsearch_hosts']
         self._username = config.get('username')
         self._password = config.get('password')
-        self._basic_auth = (self._username, self._password)
+        self._basic_auth = (self._username, self._password) if self._username else None
         self._api_key = config.get('api_key')
         self._tls_verify = config.get('ssl_verify', True)
         self._client = None  # Cache for the client
+        
+        # Validate authentication parameters
+        if not self._username and not self._api_key:
+            raise ElasticAuthenticationError(
+                "No authentication credentials provided for Elasticsearch. "
+                "Please provide a username/password or API key."
+            )
 
     @property
     def client(self):
         if self._client is None:
-            self._client = Elasticsearch(
-                hosts=self._hosts,
-                basic_auth=self._basic_auth,
-                api_key=self._api_key,
-                verify_certs=self._tls_verify
-            )
+            try:
+                self._client = Elasticsearch(
+                    hosts=self._hosts,
+                    basic_auth=self._basic_auth,
+                    api_key=self._api_key,
+                    verify_certs=self._tls_verify
+                )
+                # Test connection
+                if not self._client.ping():
+                    raise ElasticConnectionFailure("Failed to ping Elasticsearch server")
+            except ElasticConnectionError as e:
+                logger.error(f"Connection error: {e}")
+                raise ElasticConnectionFailure(f"Failed to connect to Elasticsearch: {e}")
+            except Exception as e:
+                logger.error(f"Unexpected error initializing Elasticsearch client: {e}")
+                raise
         return self._client
 
 
 def delete_all(client):
-    
-    client.delete_by_query(index="*", body={"query": {"match_all": {}}})
+    try:
+        client.delete_by_query(index="*", body={"query": {"match_all": {}}})
+    except Exception as e:
+        logger.error(f"Error deleting documents: {e}")
+        raise
 
 
 def index_query_delete(data: str, index: str, query: str, config: dict, wait: int = 2,) -> int:
-    
-    elastic = ElasticPlatform(config)
-        
-    client = elastic.client
-    
-    data = json.loads(data)
-    
-    document_ids = []
-    logger.info(f"Adding document(s) to index: {index}")
-    actions = []
-    data_list = data if isinstance(data, list) else [data]
-
-    for doc in data_list:
-        doc_id = str(uuid.uuid4())
-        actions.append({
-            "_index": index,
-            "_id": doc_id,
-            "_source": doc
-        })
-        document_ids.append(doc_id)
-
     try:
-        helpers.bulk(client, actions)
-    except ElasticConnectionError:
-        logger.error("Failed to connect to the Elasticsearch service during bulk indexing. Check host and credentials are correct.")
-        return
+        elastic = ElasticPlatform(config)
+        client = elastic.client
+        
+        data = json.loads(data)
+        
+        document_ids = []
+        logger.info(f"Adding document(s) to index: {index}")
+        actions = []
+        data_list = data if isinstance(data, list) else [data]
 
-    time.sleep(wait)
+        for doc in data_list:
+            doc_id = str(uuid.uuid4())
+            actions.append({
+                "_index": index,
+                "_id": doc_id,
+                "_source": doc
+            })
+            document_ids.append(doc_id)
 
-    logger.info(f"Executing query: {query}")
-    resp = client.esql.query(query=query)
-    result_count = len(resp['values'])
+        try:
+            helpers.bulk(client, actions)
+        except ElasticConnectionError:
+            logger.error("Failed to connect to the Elasticsearch service during bulk indexing.")
+            raise ElasticConnectionFailure("Failed during bulk indexing operation")
 
-    for doc_id in document_ids:
-        client.delete(index=index, id=doc_id)
-    
-    # delete_all(client)
+        time.sleep(wait)
 
-    return result_count
+        logger.info(f"Executing query: {query}")
+        resp = client.esql.query(query=query)
+        result_count = len(resp['values'])
+
+        for doc_id in document_ids:
+            client.delete(index=index, id=doc_id)
+        
+        return result_count
+        
+    except ElasticAuthenticationError as e:
+        logger.error(f"Authentication error: {e}")
+        return 0
+    except ElasticConnectionFailure as e:
+        logger.error(f"Connection failure: {e}")
+        return 0
+    except Exception as e:
+        logger.error(f"Unexpected error in index_query_delete: {e}")
+        return 0
 
 
 def count_docs(index: str, config: dict) -> int:
-    elastic = ElasticPlatform(config)
-    client = elastic.client
     try:
+        elastic = ElasticPlatform(config)
+        client = elastic.client
         response = client.count(index=index)
         return response.get("count", 0)
     except Exception as e:
         logger.error(f"Error counting documents in index {index}: {e}")
+        return 0
+
+
+def execute_query(query: str, config: dict) -> int:
+    try:
+        elastic = ElasticPlatform(config)
+        client = elastic.client
+        
+        logger.info(f"Executing query: {query}")
+        resp = client.esql.query(query=query)
+        return len(resp.get('values', []))
+    except Exception as e:
+        logger.error(f"Error executing query: {e}")
         return 0

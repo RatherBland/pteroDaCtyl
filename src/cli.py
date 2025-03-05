@@ -1,6 +1,6 @@
 from config import load_environments_config, load_pterodactyl_config, load_platform_config
 from convert import convert_rules
-from test import test_rules
+from test import validate_rules
 import argparse
 from utils import load_rules, write_converted_rule
 from platforms.elastic.deploy import deploy_rules
@@ -42,7 +42,9 @@ def main():
         
     if args.command == 'validate':
         if args.pre_compilation:
-            test_rules(rules=load_rules(path_to_rules), platform_config=platform_config, specific_platform=args.platform)
+            validate_rules(rules=load_rules(path_to_rules), platform_config=platform_config, specific_platform=args.platform)
+        elif args.post_compilation:
+            pass
             
     elif args.command == 'compile':
         output_rules = convert_rules(load_rules(path_to_rules), environments_config, platform_config)
