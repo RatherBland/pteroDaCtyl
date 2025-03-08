@@ -19,7 +19,6 @@ postprocessing:
       "enabled": true,
       "interval": pipeline.vars.schedule_interval|string ~ pipeline.vars.schedule_interval_unit,
       "from": "now-" ~ pipeline.vars.schedule_interval|string ~ pipeline.vars.schedule_interval_unit,
-      # "rule_id": rule.id | lower,
       "false_positives": rule.falsepositives,
       "immutable": false,
       "output_index": "",

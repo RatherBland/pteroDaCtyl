@@ -282,10 +282,68 @@ def validate_rules(
     }
 
 
+def format_live_test_results(rules: List[Dict[str, Any]]) -> None:
+    """
+    Format and print the results of live rule tests as tables.
+
+    Args:
+        rules: List of converted rules with test results
+    """
+    # Group rules by environment
+    rules_by_env = {}
+    for rule in rules:
+        env = rule.get("environment", "unknown")
+        if env not in rules_by_env:
+            rules_by_env[env] = []
+        rules_by_env[env].append(rule)
+
+    # Determine dynamic width for columns
+    all_names = [rule.get("name", "") for rule in rules]
+    all_paths = [rule.get("directory", "") for rule in rules]
+    max_name_len = max((len(name) for name in all_names), default=0) + 5
+    max_path_len = (
+        max((len(f"rules/{path}") for path in all_paths), default=0)
+        + 5
+        + max_name_len
+        + 4
+    )
+
+    # Calculate a reasonable width for the query column
+    query_width = 50  # default width for query display
+
+    print("\nLive Test Results:")
+
+    # Print results by environment
+    for env, env_rules in rules_by_env.items():
+        print(f"\nEnvironment: {env}")
+        header = f"{'Rule':<{max_name_len}} {'Path':<{max_path_len}} {'Platform':<15} {'Result Count':<15} {'Query':<{query_width}}"
+        separator = "-" * len(header)
+
+        print(header)
+        print(separator)
+
+        for rule in env_rules:
+            rule_name = rule.get("name", "")
+            rule_path = f"rules/{rule.get('directory', '')}/{rule.get('name', '')}.yml"
+            platform = rule.get("platform", "")
+            result_count = rule.get("result_count", 0)
+
+            # Truncate the query if it's too long to display nicely
+            query = rule.get("rule", "")
+
+            print(
+                f"{rule_name:<{max_name_len}} {rule_path:<{max_path_len}} {platform:<15} {result_count:<15} {query:<{query_width}}"
+            )
+
+    print("\nLive testing complete.\n")
+
+
 def live_test_rules(
     rules: list[dict],
     environments_config: Dict[str, Any],
     platform_config: Dict[str, Any],
+    include_exceptions: bool = True,
+    verbose: bool = False,
 ):
     platform_functions = {
         "elastic": elastic.replay.execute_query,
@@ -293,7 +351,11 @@ def live_test_rules(
     }
 
     converted_rules = convert_rules(
-        rules, environments_config, platform_config, testing=True
+        rules,
+        environments_config,
+        platform_config,
+        testing=True,
+        include_exceptions=include_exceptions,
     )
 
     for rule in converted_rules:
@@ -309,5 +371,8 @@ def live_test_rules(
             query=rule["rule"], config=env_platform_rule_config
         )
         rule["result_count"] = result_count
+
+    if verbose:
+        format_live_test_results(converted_rules)
 
     return converted_rules

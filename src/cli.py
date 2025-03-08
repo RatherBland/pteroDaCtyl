@@ -27,17 +27,28 @@ def main():
     validate_parser.add_argument(
         "-p", "--platform", help="The platform to validate against", required=False
     )
+    validate_parser.add_argument(
+        "-v", "--verbose", help="Verbose output", action="store_true", default=False
+    )
 
     validate_group = validate_parser.add_mutually_exclusive_group(required=True)
     validate_group.add_argument(
         "--pre-compilation",
-        help="Validate tests schema and query against test data. Does not factor in organisation level exceptions. Primary purpose is to validate that detection logic is sound against a predefined data set. ",
+        help="Validate tests schema and query against test data. Does not factor in environment level exceptions. Primary purpose is to validate that detection logic is sound against a predefined data set. ",
         action="store_true",
     )
     validate_group.add_argument(
         "--post-compilation",
-        help="Execute rules against a live environment. Will include organisation level exceptions. Primary purpose is to identify how many false positives will be seen in an uncontrolled environment",
+        help="Execute rules against a live environment. Will include environment level exceptions. Primary purpose is to identify how many false positives will be seen in an uncontrolled environment",
         action="store_true",
+    )
+
+    validate_parser.add_argument(
+        "-e",
+        "--include-exceptions",
+        help="Include evironment level exceptions when processing rules (default: True)",
+        action="store_true",
+        default=True,
     )
 
     convert_parser = subparsers.add_parser(
@@ -48,6 +59,9 @@ def main():
     )
     convert_parser.add_argument(
         "-o", "--output", help="The path to the output directory", required=False
+    )
+    convert_parser.add_argument(
+        "-v", "--verbose", help="Verbose output", action="store_true"
     )
 
     deploy_parser = subparsers.add_parser(
@@ -81,16 +95,20 @@ def main():
                 specific_platform=args.platform,
             )
         elif args.post_compilation:
-            results = live_test_rules(
+            live_test_rules(
                 rules=load_rules(path_to_rules),
                 environments_config=environments_config,
                 platform_config=platform_config,
+                include_exceptions=args.include_exceptions,
+                verbose=args.verbose,
             )
-            print(results)
 
     elif args.command == "compile":
         output_rules = convert_rules(
-            load_rules(path_to_rules), environments_config, platform_config
+            load_rules(path_to_rules),
+            environments_config,
+            platform_config,
+            verbose=args.verbose,
         )
         if args.output:
             for rule in output_rules:

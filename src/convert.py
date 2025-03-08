@@ -170,6 +170,7 @@ def convert_rule_for_environment(
     platform: str,
     env_platform_rule_config: Dict[str, Any],
     testing: bool = False,
+    include_exceptions: bool = True,
 ) -> Dict[str, Any]:
     """
     Convert a single rule for a specific environment and platform.
@@ -179,6 +180,8 @@ def convert_rule_for_environment(
         environment: Environment name
         platform: Platform name
         env_platform_rule_config: Merged platform configuration
+        testing: Flag to indicate if conversion is for testing
+        include_exceptions: Whether to include organization level exceptions
 
     Returns:
         Dictionary with converted rule information or None if conversion fails
@@ -200,15 +203,19 @@ def convert_rule_for_environment(
     conversion = Conversion(env_platform_rule_config, testing=testing)
     logger.info(f"Initialized Conversion for environment '{environment}'")
 
-    # Check if environment filters directory exists
+    # Check if environment filters directory exists and should be used
     filters_path = Path(f"environments/{environment}/filters")
-    if not filters_path.exists():
-        logger.warning(
-            f"Filters directory {filters_path} does not exist for environment '{environment}'"
-        )
+    if not include_exceptions or not filters_path.exists():
+        if not include_exceptions:
+            logger.info("Skipping exceptions for rule as requested")
+        elif not filters_path.exists():
+            logger.warning(
+                f"Filters directory {filters_path} does not exist for environment '{environment}'"
+            )
         sigma_rule = conversion.init_sigma_rule(Path(rule["path"]))
     else:
         sigma_rule = conversion.init_sigma_rule(Path(rule["path"]), filters_path)
+        logger.info(f"Including exceptions from {filters_path}")
 
     result = conversion.convert_rule(rule["raw"], sigma_rule)
 
@@ -276,6 +283,7 @@ def convert_rules(
     platform_config: Dict[str, Any],
     testing: bool = False,
     verbose: bool = False,
+    include_exceptions: bool = True,
 ) -> list[dict]:
     """
     Convert sigma rules based on environments and platforms configuration.
@@ -284,6 +292,9 @@ def convert_rules(
         rules: List of rule dictionaries
         environments_config: Configuration for environments
         platform_config: Configuration for platforms
+        testing: Flag to indicate if conversion is for testing
+        verbose: Whether to output detailed information
+        include_exceptions: Whether to include organization level exceptions
 
     Returns:
         List of converted rule dictionaries
@@ -318,7 +329,12 @@ def convert_rules(
                 # Convert each matching rule for this environment/platform
                 for rule in matching_rules:
                     result = convert_rule_for_environment(
-                        rule, environment, platform, env_platform_rule_config, testing
+                        rule,
+                        environment,
+                        platform,
+                        env_platform_rule_config,
+                        testing=testing,
+                        include_exceptions=include_exceptions,
                     )
                     if result:
                         converted_rules.append(result)
