@@ -5,6 +5,8 @@ from pydantic import ValidationError
 from platforms import elastic, splunk
 from convert import Conversion
 import copy
+from convert import convert_rules
+from utils import deep_merge
 
 
 def validate_test_schema(rule: dict, platforms: list) -> Optional[Dict[str, Any]]:
@@ -278,3 +280,34 @@ def validate_rules(
         "failed": failed_tests,
         "other": other_tests,
     }
+
+
+def live_test_rules(
+    rules: list[dict],
+    environments_config: Dict[str, Any],
+    platform_config: Dict[str, Any],
+):
+    platform_functions = {
+        "elastic": elastic.replay.execute_query,
+        "splunk": splunk.replay.execute_query,
+    }
+
+    converted_rules = convert_rules(
+        rules, environments_config, platform_config, testing=True
+    )
+
+    for rule in converted_rules:
+        platform = rule["platform"]
+        environment = rule["environment"]
+
+        env_platform_rule_config = deep_merge(
+            environments_config["environments"][environment]["platform"][platform],
+            platform_config["platforms"][platform],
+        )
+
+        result_count = platform_functions[platform](
+            query=rule["rule"], config=env_platform_rule_config
+        )
+        rule["result_count"] = result_count
+
+    return converted_rules

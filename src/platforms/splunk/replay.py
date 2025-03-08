@@ -6,15 +6,34 @@ from logger import logger
 import json
 
 
+# Custom exceptions for better error handling
+class SplunkAuthenticationError(Exception):
+    """Raised when authentication credentials are missing or invalid."""
+
+    pass
+
+
+class SplunkConnectionFailure(Exception):
+    """Raised when connection to Splunk fails."""
+
+    pass
+
+
 class SplunkPlatform:
     def __init__(self, config: dict):
-        # You can pass a config dictionary with keys like host, port, username, password, and verify
-        self._host = config.get('host')
-        self._port = config.get('port')
-        self._username = config.get('username')
-        self._password = config.get('password')
-        self._ssl_verify = config.get('ssl_verify', True)
+        self._host = config.get("host")
+        self._port = config.get("port")
+        self._username = config.get("username")
+        self._password = config.get("password")
+        self._ssl_verify = config.get("ssl_verify", True)
         self._client = None  # Cache for the client
+
+        # Validate authentication parameters
+        if not self._username or not self._password:
+            raise SplunkAuthenticationError(
+                "No authentication credentials provided for Splunk. "
+                "Please provide a username and password."
+            )
 
     @property
     def client(self):
@@ -25,116 +44,176 @@ class SplunkPlatform:
                     port=self._port,
                     username=self._username,
                     password=self._password,
-                    verify=self._ssl_verify
+                    verify=self._ssl_verify,
                 )
+                # Test connection (check if we can list indexes)
+                _ = list(self._client.indexes)
             except Exception as e:
-                logger.error(f"Failed to connect to the Splunk client: {e}")
-                raise
+                logger.error(f"Connection error: {e}")
+                raise SplunkConnectionFailure(f"Failed to connect to Splunk: {e}")
         return self._client
 
-def delete_all_documents(index: str, client: SplunkPlatform, wait: int = 2) -> None:
-    """
-    Deletes all documents from the given Splunk index.
-    
-    Args:
-        index: The target Splunk index.
-        config: A dictionary containing the Splunk connection configuration.
-        wait: Time (in seconds) to wait between polling job status.
-    """
 
-    # Create a deletion job that targets all events from the index.
-    delete_query = f"search index={index} | delete"
+def delete_all(client):
+    """
+    Delete all documents from all Splunk indexes.
+
+    Args:
+        client: Splunk client connection
+
+    Raises:
+        Exception: If deletion fails
+    """
     try:
-        delete_job = client.jobs.create(delete_query)
+        for index in client.indexes:
+            delete_query = f"search index={index.name} | delete"
+            job = client.jobs.create(delete_query)
+            while not job.is_done():
+                time.sleep(2)
     except Exception as e:
-        logger.error(f"Failed to create delete job: {e}")
-        return
+        logger.error(f"Error deleting documents: {e}")
+        raise
 
-    # Poll until the deletion job has finished.
-    while not delete_job.is_done():
-        time.sleep(wait)
 
-    logger.info(f"All documents in index '{index}' have been deleted.")
-
-def index_query_delete(index: str, data, query: str, config: dict, wait: int = 2) -> int:
+def index_query_delete(
+    data: str, index: str, query: str, config: dict, wait: int = 2
+) -> int:
     """
-    Submits one or more events to a Splunk index, executes a search query, then deletes the event(s).
-    
+    Submits events to a Splunk index, executes a search query, then deletes the events.
+
     Args:
-        index: The target Splunk index.
-        data: The event data as a string or a list of strings.
-        query: The Splunk search query to execute.
-        config: A dictionary containing the Splunk connection configuration.
-        wait: Time (in seconds) to wait for indexing and job completion.
-        
+        data: The event data as a JSON string
+        index: The target Splunk index
+        query: The Splunk search query to execute
+        config: Dictionary containing Splunk connection configuration
+        wait: Time (in seconds) to wait between operations
+
     Returns:
-        The number of search result events returned.
+        The number of search result events returned
     """
-    splunk = SplunkPlatform(config)
-    client = splunk.client
+    try:
+        # Setup client
+        splunk = SplunkPlatform(config)
+        client_instance = splunk.client
 
-    # Create a unique cleanup identifier for the batch.
-    
-    logger.info(f"Adding document(s) to index: {index}")
-    
-    data = json.loads(data)
+        # Ensure index exists
+        if index not in client_instance.indexes:
+            logger.info(f"Creating index '{index}' as it does not exist")
+            client_instance.indexes.create(index)
+        index_obj = client_instance.indexes[index]
 
-    # Ensure the index exists or create it
-    if index not in client.indexes:
-        client.indexes.create(index)
-    index_obj = client.indexes[index]
-    
-    data_list = data if isinstance(data, list) else [data]
+        # Parse data and prepare for indexing
+        parsed_data = json.loads(data)
+        data_list = parsed_data if isinstance(parsed_data, list) else [parsed_data]
 
-    # Index multiple events if provided; otherwise, index a single document.
-    
-    cleanup_ids = []
+        # Add cleanup IDs to each event
+        cleanup_ids = []
+        logger.info(f"Adding document(s) to index: {index}")
 
-    for event in data_list:
-        cleanup_id = str(uuid.uuid4())
-        cleanup_ids.append(cleanup_id)
-        event['cleanup_id'] = cleanup_id
-        index_obj.submit(json.dumps(event))
+        for event in data_list:
+            cleanup_id = str(uuid.uuid4())
+            cleanup_ids.append(cleanup_id)
+            event["cleanup_id"] = cleanup_id
 
-    # Allow some time for the event(s) to get indexed.
-    time.sleep(wait)
+            # Index the event
+            try:
+                index_obj.submit(json.dumps(event))
+            except Exception as e:
+                logger.error(f"Failed to index event: {e}")
+                # Continue with other events
 
-    logger.info(f"Executing query: {query}")
-    job = client.jobs.create(f"search {query}")
-    while not job.is_done():
+        # Wait for indexing to complete
         time.sleep(wait)
 
-    rr = results.ResultsReader(job.results())
-    result_count = sum(1 for _ in rr)
-    
-    # Cleanup: delete only the event(s) with our unique cleanup_id.
-    cleanup_ids_str = ", ".join(f"\"{cid}\"" for cid in cleanup_ids)
-    delete_query = f"search index={index} | where cleanup_id IN ({cleanup_ids_str}) | delete"
-    print(delete_query)
-    delete_job = client.jobs.create(delete_query)
-    while not delete_job.is_done():
-        time.sleep(wait)
-        
-    # delete_all_documents(index, client)
+        # Execute search query
+        logger.info(f"Executing query: {query}")
+        job = client_instance.jobs.create(f"search {query}")
 
-    return result_count
+        while not job.is_done():
+            time.sleep(wait)
+
+        rr = results.ResultsReader(job.results())
+        result_count = sum(1 for _ in rr)
+        logger.info(f"Query returned {result_count} results")
+
+        # Clean up the indexed events
+        cleanup_ids_str = ", ".join(f'"{cid}"' for cid in cleanup_ids)
+        delete_query = (
+            f"search index={index} | where cleanup_id IN ({cleanup_ids_str}) | delete"
+        )
+
+        try:
+            delete_job = client_instance.jobs.create(delete_query)
+            while not delete_job.is_done():
+                time.sleep(wait)
+            logger.info(f"Cleaned up {len(cleanup_ids)} events from index '{index}'")
+        except Exception as e:
+            logger.error(f"Failed to clean up events: {e}")
+
+        return result_count
+
+    except SplunkAuthenticationError as e:
+        logger.error(f"Authentication error: {e}")
+        return 0
+    except SplunkConnectionFailure as e:
+        logger.error(f"Connection failure: {e}")
+        return 0
+    except Exception as e:
+        logger.error(f"Unexpected error in index_query_delete: {e}")
+        return 0
+
 
 def count_docs(index: str, config: dict) -> int:
     """
     Counts the number of documents in a Splunk index.
-    
-    Args:
-        index: The target Splunk index.
-        config: A dictionary containing the Splunk connection configuration.
-        
-    Returns:
-        The number of documents in the index.
-    """
-    splunk = SplunkPlatform(config)
-    client = splunk.client
 
-    if index not in client.indexes:
+    Args:
+        index: The target Splunk index
+        config: Dictionary containing Splunk connection configuration
+
+    Returns:
+        The number of documents in the index
+    """
+    try:
+        splunk = SplunkPlatform(config)
+        client_instance = splunk.client
+
+        if index not in client_instance.indexes:
+            return 0
+
+        index_obj = client_instance.indexes[index]
+        return index_obj.totalEventCount
+    except Exception as e:
+        logger.error(f"Error counting documents in index {index}: {e}")
         return 0
 
-    index_obj = client.indexes[index]
-    return index_obj.totalEventCount
+
+def execute_query(query: str, config: dict) -> int:
+    """
+    Executes a search query and returns the number of results.
+
+    Args:
+        query: The Splunk search query to execute
+        config: Dictionary containing Splunk connection configuration
+
+    Returns:
+        The number of search results
+    """
+    try:
+        splunk = SplunkPlatform(config)
+        client_instance = splunk.client
+
+        logger.info(f"Executing query: {query}")
+        job = client_instance.jobs.create(f"search {query}")
+
+        while not job.is_done():
+            time.sleep(2)
+
+        rr = results.ResultsReader(job.results())
+        result_count = sum(1 for _ in rr)
+        logger.info(f"Query returned {result_count} results")
+
+        return result_count
+    except Exception as e:
+        logger.error(f"Error executing query: {e}")
+        return 0

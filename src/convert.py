@@ -275,6 +275,7 @@ def convert_rules(
     environments_config: Dict[str, Any],
     platform_config: Dict[str, Any],
     testing: bool = False,
+    verbose: bool = False,
 ) -> list[dict]:
     """
     Convert sigma rules based on environments and platforms configuration.
@@ -323,6 +324,7 @@ def convert_rules(
                         converted_rules.append(result)
 
     # Print formatted results
-    print_conversion_results(converted_rules)
+    if verbose:
+        print_conversion_results(converted_rules)
 
     return converted_rules
