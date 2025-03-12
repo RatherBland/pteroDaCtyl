@@ -1,11 +1,11 @@
 from typing import Any, Dict, List
 from pathlib import Path
-from logger import logger
+from .logger import logger
 from sigma.conversion.base import Backend, SigmaCollection
 from sigma.plugins import InstalledSigmaPlugins
-from platforms import elastic, splunk
+from .platforms import elastic, splunk
 from sigma.processing.pipeline import ProcessingPipeline
-from utils import deep_merge
+from .utils import deep_merge
 
 
 class Conversion:

@@ -1,2 +1,2 @@
-import platforms.splunk.replay
-import platforms.splunk.handle_indexes
+from . import replay
+from . import handle_indexes

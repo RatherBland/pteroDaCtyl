@@ -1,2 +1,2 @@
-import platforms.elastic.replay
-import platforms.elastic.handle_indexes
+from . import replay
+from . import handle_indexes

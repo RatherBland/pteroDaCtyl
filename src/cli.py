@@ -1,13 +1,16 @@
-from config import (
+from .config import (
     load_environments_config,
     load_pterodactyl_config,
     load_platform_config,
 )
-from convert import convert_rules
-from test import validate_rules, live_test_rules
+from .convert import convert_rules
+from .validate import (
+    validate_rules,
+    live_test_rules,
+)  # Changed from 'test' to 'test_rules'
 import argparse
-from utils import load_rules, write_converted_rule
-from platforms.elastic.deploy import deploy_rules
+from .utils import load_rules, write_converted_rule
+from .platforms.elastic.deploy import deploy_rules
 
 
 def main():

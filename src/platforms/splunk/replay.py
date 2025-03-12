@@ -2,7 +2,7 @@ import uuid
 import time
 import splunklib.client as client
 import splunklib.results as results
-from logger import logger
+from ...logger import logger
 import json
 
 

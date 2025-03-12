@@ -1,12 +1,12 @@
 from typing import Dict, Any, Optional, List, Tuple
-from platforms.schema import Tests
-from logger import logger
+from .platforms.schema import Tests
+from .logger import logger
 from pydantic import ValidationError
-from platforms import elastic, splunk
-from convert import Conversion
+from .platforms import elastic, splunk
+from .convert import Conversion
 import copy
-from convert import convert_rules
-from utils import deep_merge
+from .convert import convert_rules
+from .utils import deep_merge
 
 
 def validate_test_schema(rule: dict, platforms: list) -> Optional[Dict[str, Any]]:
@@ -16,39 +16,38 @@ def validate_test_schema(rule: dict, platforms: list) -> Optional[Dict[str, Any]
     Returns:
         The rule dictionary if the test schema validates successfully; otherwise, None.
     """
-
     logger.info(f"Validating test schema for rule: {rule['path']}")
 
-    # Retrieve the tests section from the rule definition, if present
-    rule_test = (
-        rule["raw"][0].get("tests")
-        if rule["raw"][0].get("tests")
-        else rule["raw"][1].get("tests")
-    )
+    rule_test = None
+    raw = rule.get("raw", [])
+    if len(raw) > 0 and isinstance(raw[0], dict) and raw[0].get("tests"):
+        rule_test = raw[0].get("tests")
+    elif len(raw) > 1 and isinstance(raw[1], dict) and raw[1].get("tests"):
+        rule_test = raw[1].get("tests")
 
-    if rule_test:
-        rule_test_platforms = list(rule_test.get("platforms").keys())
-
-        # Identify any platforms missing a test definition
-        platforms_diff = set(platforms) - set(rule_test_platforms)
-
-        if platforms_diff:
-            logger.warning(
-                f"{rule['path']} missing tests for the following platforms: {', '.join(platforms_diff)}"
-            )
-
-        try:
-            # Validate the test schema against the Tests model
-            Tests(**rule_test)
-            logger.info(f"Test schema validated for rule: {rule['path']}")
-            return rule
-        except ValidationError as e:
-            logger.error(
-                f"Test schema validation failed for rule: {rule['path']}, with errors: {e}"
-            )
-    else:
+    if not rule_test:
         logger.warning(
             f"No test schema found for rule: {rule['path']}. This rule will not be tested."
+        )
+        return None
+
+    rule_test_platforms = list(rule_test.get("platforms", {}).keys())
+
+    # Identify any platforms missing a test definition
+    platforms_diff = set(platforms) - set(rule_test_platforms)
+    if platforms_diff:
+        logger.warning(
+            f"{rule['path']} missing tests for the following platforms: {', '.join(platforms_diff)}"
+        )
+
+    try:
+        # Validate the test schema against the Tests model
+        Tests(**rule_test)
+        logger.info(f"Test schema validated for rule: {rule['path']}")
+        return rule
+    except ValidationError as e:
+        logger.error(
+            f"Test schema validation failed for rule: {rule['path']}, with errors: {e}"
         )
 
     return None

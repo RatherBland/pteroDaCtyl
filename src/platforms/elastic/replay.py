@@ -2,7 +2,7 @@ from elasticsearch import Elasticsearch
 from elastic_transport import ConnectionError as ElasticConnectionError
 import time
 import uuid
-from logger import logger
+from ...logger import logger
 import json
 from elasticsearch import helpers
 

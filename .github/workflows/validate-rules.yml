@@ -1,0 +1,185 @@
+name: Validate Detection Rules
+
+on:
+  push:
+    paths:
+      - 'rules/**/*.yml'
+      - 'rules/**/*.yaml'
+  pull_request:
+    paths:
+      - 'rules/**/*.yml'
+      - 'rules/**/*.yaml'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  prepare:
+    name: Identify Rules to Validate
+    runs-on: ubuntu-latest
+    outputs:
+      rule_matrix: ${{ steps.set-matrix.outputs.rule_matrix }}
+      total_rules: ${{ steps.set-matrix.outputs.total_rules }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch all history for all tags and branches
+      
+      - name: Find modified rules
+        id: find-rules
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Get all rules if manually triggered
+            echo "Finding all rules"
+            RULES=$(find rules -name "*.yml" -o -name "*.yaml" | sort)
+          else
+            # Get modified rules if triggered by push/PR
+            echo "Finding modified rules"
+            # Make sure the branch exists before trying to fetch it
+            git fetch origin
+            
+            # If it's a PR, compare with the base branch
+            if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+              echo "PR event detected"
+              RULES=$(git diff --name-only origin/${{ github.base_ref }} | grep -E "rules/.*\.(yml|yaml)$" || echo "")
+            else
+              echo "Push event detected"
+              # For push events, compare with the previous commit
+              RULES=$(git diff --name-only HEAD^ HEAD | grep -E "rules/.*\.(yml|yaml)$" || echo "")
+            fi
+            
+            # If no rules were modified, get all rules
+            if [[ -z "$RULES" ]]; then
+              echo "No modified rules found, validating all rules"
+              RULES=$(find rules -name "*.yml" -o -name "*.yaml" | sort)
+            fi
+          fi
+          
+          echo "Found rules: $RULES"
+          echo "RULES<<EOF" >> $GITHUB_ENV
+          echo "$RULES" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Set matrix for rules
+        id: set-matrix
+        run: |
+          # Read rules from environment variable
+          readarray -t RULES_ARRAY <<< "$RULES"
+          TOTAL_RULES=${#RULES_ARRAY[@]}
+          
+          # Create JSON array for the matrix
+          RULES_JSON="["
+          for ((i=0; i<$TOTAL_RULES; i++)); do
+            RULE_PATH="${RULES_ARRAY[$i]}"
+            # Skip empty lines
+            if [[ -z "$RULE_PATH" ]]; then
+              continue
+            fi
+            
+            if [[ $i -gt 0 && "$RULES_JSON" != "[" ]]; then
+              RULES_JSON+=","
+            fi
+            # Escape any quotes in the path
+            RULE_PATH="${RULE_PATH//\"/\\\"}"
+            RULES_JSON+="\"$RULE_PATH\""
+          done
+          RULES_JSON+="]"
+          
+          echo "Matrix JSON: $RULES_JSON"
+          
+          # For GitHub Actions outputs, use the newer syntax
+          echo "rule_matrix=$RULES_JSON" >> $GITHUB_OUTPUT
+          echo "total_rules=$TOTAL_RULES" >> $GITHUB_OUTPUT
+  
+  validate:
+    name: Validate Rules
+    needs: prepare
+    runs-on: ubuntu-latest
+    # Skip if no rules to validate
+    if: ${{ needs.prepare.outputs.total_rules != '0' }}
+    
+    strategy:
+      fail-fast: false  # Continue running other matrix jobs even if one fails
+      matrix:
+        rule: ${{ fromJSON(needs.prepare.outputs.rule_matrix) }}
+        # Split into chunks if there are many rules
+        chunk: [0]
+    
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: false
+          ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+        ports:
+          - 9200:9200
+          - 9300:9300
+        options: >-
+          --health-cmd="curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4 
+        with:
+          python-version: '3.12.2'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          
+      - name: Verify Elasticsearch is running
+        run: |
+          echo "Verifying Elasticsearch is running..."
+          curl -s http://localhost:9200 | grep "You Know, for Search"
+          curl -s http://localhost:9200/_cluster/health | jq .
+          
+      - name: Validate rule against Elastic
+        id: validate
+        run: |
+          echo "Validating rule: ${{ matrix.rule }}"
+          python -m src.cli validate --pre-compilation --platform elastic --file "${{ matrix.rule }}" --verbose
+          
+      - name: Report validation result
+        if: always()
+        run: |
+          if [ "${{ steps.validate.outcome }}" == "success" ]; then
+            echo "## ✅ Validation succeeded for rule: ${{ matrix.rule }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ Validation failed for rule: ${{ matrix.rule }}" >> $GITHUB_STEP_SUMMARY
+            echo "See job logs for detailed validation errors." >> $GITHUB_STEP_SUMMARY
+          fi
+  
+  summary:
+    name: Validation Summary
+    needs: [prepare, validate]
+    runs-on: ubuntu-latest
+    if: always()  # Run even if validate job was skipped or failed
+    
+    steps:
+      - name: Create summary
+        run: |
+          echo "# Detection Rule Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ needs.prepare.outputs.total_rules }}" == "0" ]]; then
+            echo "ℹ️ **No rules were found to validate.**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Total rules processed: ${{ needs.prepare.outputs.total_rules }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            if [[ "${{ needs.validate.result }}" == "success" ]]; then
+              echo "✅ **All validation checks passed!**" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ **Some validation checks failed.**" >> $GITHUB_STEP_SUMMARY
+              echo "Please check the individual rule jobs for more details." >> $GITHUB_STEP_SUMMARY
+            fi
+          fi

@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  splunk:
+    image: splunk/splunk:latest
+    container_name: pterodactyl-splunk
+    environment:
+      - SPLUNK_START_ARGS=--accept-license
+      - SPLUNK_PASSWORD=ChangeMeNow123!
+      - SPLUNK_LICENSE_URI=Free
+      - SPLUNK_HEC_TOKEN=pterodactyl-token
+    volumes:
+      - splunk_data:/opt/splunk/var
+    ports:
+      - "8000:8000"  # Web UI
+      - "8088:8088"  # HTTP Event Collector
+      - "8089:8089"  # Management port
+    healthcheck:
+      test: ["CMD", "curl", "-k", "https://localhost:8089/services/server/info"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  splunk_data:
