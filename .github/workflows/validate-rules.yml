@@ -119,7 +119,7 @@ jobs:
           --health-cmd="curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'"
           --health-interval=10s
           --health-timeout=5s
-          --health-retries=20
+          --health-retries=50
     
     steps:
       - name: Checkout repository
