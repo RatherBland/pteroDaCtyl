@@ -25,7 +25,7 @@ MarkupSafe==3.0.2
 packaging==24.2
 pluggy==1.5.0
 portalocker==2.10.1
-pteroDaCtyl @ file:///root/pteroDaCtyl
+# pteroDaCtyl @ file:///root/pteroDaCtyl
 pycparser==2.22
 pycryptodome==3.21.0
 pydantic==2.10.6

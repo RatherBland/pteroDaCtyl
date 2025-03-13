@@ -11,7 +11,7 @@ password = "changeme"
 kibana_base_url = "http://localhost:5601"
 kibana_workspace_name = "Default"
 elasticsearch_hosts = [
-    "https://192.168.86.108:9200"
+    "http://localhost:9200"
 ]
 
 ssl_verify = false
