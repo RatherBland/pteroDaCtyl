@@ -2,7 +2,7 @@ from typing import Any, Dict, List
 from pathlib import Path
 import yaml
 import json
-from .logger import logger
+from pterodactyl.logger import logger
 
 
 def load_rules(path_to_rules: str) -> List[Dict[str, Any]]:

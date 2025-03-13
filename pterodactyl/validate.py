@@ -1,12 +1,12 @@
 from typing import Dict, Any, Optional, List, Tuple
-from .platforms.schema import Tests
-from .logger import logger
+from pterodactyl.platforms.schema import Tests
+from pterodactyl.logger import logger
 from pydantic import ValidationError
-from .platforms import elastic, splunk
-from .convert import Conversion
+from pterodactyl.platforms import elastic, splunk
+from pterodactyl.convert import Conversion
 import copy
-from .convert import convert_rules
-from .utils import deep_merge
+from pterodactyl.convert import convert_rules
+from pterodactyl.utils import deep_merge
 
 
 def validate_test_schema(rule: dict, platforms: list) -> Optional[Dict[str, Any]]:

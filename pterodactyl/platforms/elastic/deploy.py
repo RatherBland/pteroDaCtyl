@@ -1,8 +1,8 @@
 import os
 import requests
-from ...logger import logger
+from pterodactyl.logger import logger
 from typing import Union
-from ...utils import deep_merge
+from pterodactyl.utils import deep_merge
 
 
 def deploy_rule(
