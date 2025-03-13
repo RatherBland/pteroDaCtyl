@@ -16,7 +16,6 @@ logger.addHandler(handler)
 
 def error(msg, *args, **kwargs):
     """Log an error message and return 1 to break execution flow."""
-    logger.error(msg, *args, **kwargs)
 
     if os.environ.get("GITHUB_ACTIONS") == "true":
         # Format: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#setting-a-warning-message
@@ -28,6 +27,12 @@ def error(msg, *args, **kwargs):
             print(f"::error file={file},line={line},col={col}::{msg}")
         else:
             print(f"::error::{msg}")
+
+    # Create a new dict without GitHub Actions specific keys
+    logging_kwargs = {
+        k: v for k, v in kwargs.items() if k not in ("file", "line", "col")
+    }
+    logger.error(msg, *args, **logging_kwargs)
     return msg
 
 
@@ -37,7 +42,6 @@ def warning(msg, *args, **kwargs):
 
     This will make GitHub Actions recognize warnings in the logs.
     """
-    logger.warning(msg, *args, **kwargs)
 
     # Check if running in GitHub Actions
     if os.environ.get("GITHUB_ACTIONS") == "true":
@@ -50,4 +54,10 @@ def warning(msg, *args, **kwargs):
             print(f"::warning file={file},line={line},col={col}::{msg}")
         else:
             print(f"::warning::{msg}")
+
+    # Create a new dict without GitHub Actions specific keys
+    logging_kwargs = {
+        k: v for k, v in kwargs.items() if k not in ("file", "line", "col")
+    }
+    logger.warning(msg, *args, **logging_kwargs)
     return msg
