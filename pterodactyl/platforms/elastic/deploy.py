@@ -1,6 +1,6 @@
 import os
 import requests
-from pterodactyl.logger import logger
+from pterodactyl.logger import logger, error
 from typing import Union
 from pterodactyl.utils import deep_merge
 
@@ -34,13 +34,13 @@ def deploy_rule(
                 f"Updated rule {rule_name}:{rule_id} with status code {response.status_code}"
             )
         else:
-            logger.error(f"Error updating rule {rule_name}:{rule_id}: {response.text}")
+            return error(f"Error updating rule {rule_name}:{rule_id}: {response.text}")
     elif response.status_code in [200, 201]:
         logger.info(
             f"Deployed rule '{rule_name}:{rule_id}' successfully with status code {response.status_code}"
         )
     else:
-        logger.error(f"Error deploying rule {rule_name}:{rule_id}: {response.text}")
+        return error(f"Error deploying rule {rule_name}:{rule_id}: {response.text}")
 
     return response
 

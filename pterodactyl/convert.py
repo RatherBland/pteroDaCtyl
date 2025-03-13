@@ -1,6 +1,6 @@
 from typing import Any, Dict, List
 from pathlib import Path
-from pterodactyl.logger import logger
+from pterodactyl.logger import logger, error, warning
 from sigma.conversion.base import Backend, SigmaCollection
 from sigma.plugins import InstalledSigmaPlugins
 from pterodactyl.platforms import elastic, splunk
@@ -35,12 +35,12 @@ class Conversion:
                     group_match = key
                     break
             if not group_match:
-                logger.warning(
+                return error(
                     f"No matching pipeline config group found for rule with logsource {rule_logsource}"
                 )
             return group_match
         except AttributeError:
-            logger.error(
+            return error(
                 f"No logsources were found the platform {self._platform_name}. Please check the platforms.toml"
             )
             return None
@@ -93,8 +93,9 @@ class Conversion:
             )
         else:
             rule_supported = False
-            logger.warning(
-                "Rule is not supported due to missing pipeline config group."
+            warning(
+                "Rule is not supported due to missing pipeline config group.",
+                file=getattr(rule_content, "source", "unknown"),
             )
 
         if rule_supported:
@@ -102,11 +103,11 @@ class Conversion:
                 backend_class = backends[backend_name]
             except KeyError:
                 if backend_name is None:
-                    logger.error(
+                    return error(
                         f"Conversion aborted: backend {backend_name} not found. No backend specified in platforms.toml."
                     )
                 else:
-                    logger.error(
+                    return error(
                         f"Conversion aborted: backend {backend_name} not found. It has not been installed."
                     )
                 return None
@@ -135,7 +136,7 @@ class Conversion:
             )
             return converted_rule
         else:
-            logger.error("Conversion aborted: rule unsupported")
+            return error("Conversion aborted: rule unsupported")
             return None
 
 
@@ -209,8 +210,9 @@ def convert_rule_for_environment(
         if not include_exceptions:
             logger.info("Skipping exceptions for rule as requested")
         elif not filters_path.exists():
-            logger.warning(
-                f"Filters directory {filters_path} does not exist for environment '{environment}'"
+            warning(
+                f"Filters directory {filters_path} does not exist for environment '{environment}'",
+                file=str(filters_path),
             )
         sigma_rule = conversion.init_sigma_rule(Path(rule["path"]))
     else:

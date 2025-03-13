@@ -2,7 +2,7 @@ import uuid
 import time
 import splunklib.client as client
 import splunklib.results as results
-from pterodactyl.logger import logger
+from pterodactyl.logger import logger, error
 import json
 
 
@@ -49,7 +49,7 @@ class SplunkPlatform:
                 # Test connection (check if we can list indexes)
                 _ = list(self._client.indexes)
             except Exception as e:
-                logger.error(f"Connection error: {e}")
+                error(f"Connection error: {e}")
                 raise SplunkConnectionFailure(f"Failed to connect to Splunk: {e}")
         return self._client
 
@@ -71,7 +71,7 @@ def delete_all(client):
             while not job.is_done():
                 time.sleep(2)
     except Exception as e:
-        logger.error(f"Error deleting documents: {e}")
+        error(f"Error deleting documents: {e}")
         raise
 
 
@@ -119,7 +119,7 @@ def index_query_delete(
             try:
                 index_obj.submit(json.dumps(event))
             except Exception as e:
-                logger.error(f"Failed to index event: {e}")
+                error(f"Failed to index event: {e}")
                 # Continue with other events
 
         # Wait for indexing to complete
@@ -148,18 +148,18 @@ def index_query_delete(
                 time.sleep(wait)
             logger.info(f"Cleaned up {len(cleanup_ids)} events from index '{index}'")
         except Exception as e:
-            logger.error(f"Failed to clean up events: {e}")
+            error(f"Failed to clean up events: {e}")
 
         return result_count
 
     except SplunkAuthenticationError as e:
-        logger.error(f"Authentication error: {e}")
+        error(f"Authentication error: {e}")
         return 0
     except SplunkConnectionFailure as e:
-        logger.error(f"Connection failure: {e}")
+        error(f"Connection failure: {e}")
         return 0
     except Exception as e:
-        logger.error(f"Unexpected error in index_query_delete: {e}")
+        error(f"Unexpected error in index_query_delete: {e}")
         return 0
 
 
@@ -184,7 +184,7 @@ def count_docs(index: str, config: dict) -> int:
         index_obj = client_instance.indexes[index]
         return index_obj.totalEventCount
     except Exception as e:
-        logger.error(f"Error counting documents in index {index}: {e}")
+        error(f"Error counting documents in index {index}: {e}")
         return 0
 
 
@@ -215,5 +215,5 @@ def execute_query(query: str, config: dict) -> int:
 
         return result_count
     except Exception as e:
-        logger.error(f"Error executing query: {e}")
+        error(f"Error executing query: {e}")
         return 0

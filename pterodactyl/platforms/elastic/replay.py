@@ -2,7 +2,7 @@ from elasticsearch import Elasticsearch
 from elastic_transport import ConnectionError as ElasticConnectionError
 import time
 import uuid
-from pterodactyl.logger import logger
+from pterodactyl.logger import logger, error
 import json
 from elasticsearch import helpers
 
@@ -56,12 +56,12 @@ class ElasticPlatform:
                         "Failed to ping Elasticsearch server"
                     )
             except ElasticConnectionError as e:
-                logger.error(f"Connection error: {e}")
+                error(f"Connection error: {e}")
                 raise ElasticConnectionFailure(
                     f"Failed to connect to Elasticsearch: {e}"
                 )
             except Exception as e:
-                logger.error(f"Unexpected error initializing Elasticsearch client: {e}")
+                error(f"Unexpected error initializing Elasticsearch client: {e}")
                 raise
         return self._client
 
@@ -70,7 +70,7 @@ def delete_all(client):
     try:
         client.delete_by_query(index="*", body={"query": {"match_all": {}}})
     except Exception as e:
-        logger.error(f"Error deleting documents: {e}")
+        error(f"Error deleting documents: {e}")
         raise
 
 
@@ -100,7 +100,7 @@ def index_query_delete(
         try:
             helpers.bulk(client, actions)
         except ElasticConnectionError:
-            logger.error(
+            error(
                 "Failed to connect to the Elasticsearch service during bulk indexing."
             )
             raise ElasticConnectionFailure("Failed during bulk indexing operation")
@@ -117,13 +117,13 @@ def index_query_delete(
         return result_count
 
     except ElasticAuthenticationError as e:
-        logger.error(f"Authentication error: {e}")
+        error(f"Authentication error: {e}")
         return 0
     except ElasticConnectionFailure as e:
-        logger.error(f"Connection failure: {e}")
+        error(f"Connection failure: {e}")
         return 0
     except Exception as e:
-        logger.error(f"Unexpected error in index_query_delete: {e}")
+        error(f"Unexpected error in index_query_delete: {e}")
         return 0
 
 
@@ -134,7 +134,7 @@ def count_docs(index: str, config: dict) -> int:
         response = client.count(index=index)
         return response.get("count", 0)
     except Exception as e:
-        logger.error(f"Error counting documents in index {index}: {e}")
+        error(f"Error counting documents in index {index}: {e}")
         return 0
 
 
@@ -147,5 +147,5 @@ def execute_query(query: str, config: dict) -> int:
         resp = client.esql.query(query=query)
         return len(resp.get("values", []))
     except Exception as e:
-        logger.error(f"Error executing query: {e}")
+        error(f"Error executing query: {e}")
         return 0

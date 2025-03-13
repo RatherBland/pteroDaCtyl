@@ -2,7 +2,7 @@ from typing import Any, Dict, List
 from pathlib import Path
 import yaml
 import json
-from pterodactyl.logger import logger
+from pterodactyl.logger import logger, error
 
 
 def load_rules(path_to_rules: str) -> List[Dict[str, Any]]:
@@ -78,6 +78,6 @@ def write_converted_rule(
         with file_path.open("w") as f:
             yaml.dump(json.loads(rule_data), f)
     except json.decoder.JSONDecodeError:
-        logger.error(
+        error(
             f"Rule data is not in JSON format. {environment}/{platform}/{directory}/{filename}.yaml could not be written."
         )

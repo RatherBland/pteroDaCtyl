@@ -1,6 +1,6 @@
 from typing import Dict, Any, Optional, List, Tuple
 from pterodactyl.platforms.schema import Tests
-from pterodactyl.logger import logger
+from pterodactyl.logger import logger, error, warning
 from pydantic import ValidationError
 from pterodactyl.platforms import elastic, splunk
 from pterodactyl.convert import Conversion
@@ -26,8 +26,9 @@ def validate_test_schema(rule: dict, platforms: list) -> Optional[Dict[str, Any]
         rule_test = raw[1].get("tests")
 
     if not rule_test:
-        logger.warning(
-            f"No test schema found for rule: {rule['path']}. This rule will not be tested."
+        warning(
+            f"No test schema found for rule: {rule['path']}. This rule will not be tested.",
+            file=rule["path"],
         )
         return None
 
@@ -36,8 +37,9 @@ def validate_test_schema(rule: dict, platforms: list) -> Optional[Dict[str, Any]
     # Identify any platforms missing a test definition
     platforms_diff = set(platforms) - set(rule_test_platforms)
     if platforms_diff:
-        logger.warning(
-            f"{rule['path']} missing tests for the following platforms: {', '.join(platforms_diff)}"
+        warning(
+            f"{rule['path']} missing tests for the following platforms: {', '.join(platforms_diff)}",
+            file=rule["path"],
         )
 
     try:
@@ -46,7 +48,7 @@ def validate_test_schema(rule: dict, platforms: list) -> Optional[Dict[str, Any]
         logger.info(f"Test schema validated for rule: {rule['path']}")
         return rule
     except ValidationError as e:
-        logger.error(
+        return error(
             f"Test schema validation failed for rule: {rule['path']}, with errors: {e}"
         )
 
@@ -70,7 +72,7 @@ def determine_test_platforms(
         if specific_platform in platform_config["platforms"]:
             return [specific_platform]
         else:
-            logger.error(
+            return error(
                 f"Platform {specific_platform} is not available in the platform configuration."
             )
             return []
@@ -143,10 +145,13 @@ def execute_rule_test(
         )
         return test_rule, "success"
     else:
-        logger.error(
-            f"Rule: {rule['path']} failed to test on platform: {platform} with result count: {result_count}. Expected: {expected_hits}"
+        return (
+            error(
+                f"Rule: {rule['path']} failed to test on platform: {platform} with result count: {result_count}. Expected: {expected_hits}"
+            ),
+            test_rule,
+            "failed",
         )
-        return test_rule, "failed"
 
 
 def format_test_results(
