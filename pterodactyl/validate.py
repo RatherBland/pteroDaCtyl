@@ -100,7 +100,7 @@ def execute_rule_test(
         "success", "failed", or "other"
     """
     conversion = Conversion(config=platform_config["platforms"][platform], testing=True)
-    sigma_rule = conversion.init_sigma_rule(rule["path"])
+    sigma_rule = conversion.init_sigma_rule(rule["raw"])
     converted_rule = conversion.convert_rule(rule["raw"][0], sigma_rule)
     pipeline_group = conversion.get_pipeline_config_group(rule["raw"][0])
 
@@ -145,13 +145,7 @@ def execute_rule_test(
         )
         return test_rule, "success"
     else:
-        return (
-            error(
-                f"Rule: {rule['path']} failed to test on platform: {platform} with result count: {result_count}. Expected: {expected_hits}"
-            ),
-            test_rule,
-            "failed",
-        )
+        return test_rule, "failed"
 
 
 def format_test_results(
