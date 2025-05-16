@@ -6,6 +6,7 @@ from sigma.plugins import InstalledSigmaPlugins
 from pterodactyl.platforms import elastic, splunk
 from sigma.processing.pipeline import ProcessingPipeline
 from pterodactyl.utils import deep_merge
+import yaml
 
 
 class Conversion:
@@ -46,18 +47,13 @@ class Conversion:
             return None
 
     def init_sigma_rule(
-        self, rule_path: Path, exceptions_dir: Path = None
+        self, rules: list[dict], filters: list[dict] = None
     ) -> SigmaCollection:
-        if exceptions_dir:
-            sigma_rule = SigmaCollection.load_ruleset([rule_path, exceptions_dir])
-            logger.info(
-                f"Loaded sigma rule from '{rule_path}' with exceptions directory '{exceptions_dir}'"
-            )
+        if filters:
+            sigma_rule = SigmaCollection.from_dicts(rules + filters)
+
         else:
-            sigma_rule = SigmaCollection.load_ruleset([rule_path])
-            logger.info(
-                f"Loaded sigma rule from '{rule_path}' without exceptions directory"
-            )
+            sigma_rule = SigmaCollection.from_dicts(rules)
 
         return sigma_rule
 
@@ -187,18 +183,36 @@ def convert_rule_for_environment(
     Returns:
         Dictionary with converted rule information or None if conversion fails
     """
+    import copy
+
+    # Create a deep copy of the rule to avoid modifying the original
+    rule = copy.deepcopy(rule)
     rule_raw = rule["raw"][0]
     rule_environments = rule_raw.get("environments")
     rule_directory = rule_raw.get(
         "directory", rule_raw["logsource"].get("product", "unknown")
     )
 
-    # Skip if environment not in rule's allowed environments
-    if rule_environments and environment not in rule_environments:
-        logger.info(
-            f"Skipping rule '{rule_raw.get('title', 'Unknown title')}' as environment '{environment}' is not in the permitted list"
-        )
-        return None
+    # Check if environments is a dictionary and apply overrides
+    if isinstance(rule_environments, dict):
+        # Skip if environment not in rule's environments dictionary
+        if environment not in rule_environments:
+            logger.info(
+                f"Skipping rule '{rule_raw.get('title', 'Unknown title')}' as environment '{environment}' is not in the environments dictionary"
+            )
+            return None
+
+        # Apply environment-specific overrides
+        env_overrides = rule_environments[environment]
+        logger.info(f"Applying environment-specific overrides for '{environment}'")
+
+        # Apply each override to the rule
+        for key, value in env_overrides.items():
+            if key != "environments":  # Avoid recursive overrides
+                rule_raw[key] = value
+                logger.info(
+                    f"Applied override for key '{key}' in environment '{environment}'"
+                )
 
     # Initialize converter and convert rule
     conversion = Conversion(env_platform_rule_config, testing=testing)
@@ -206,6 +220,15 @@ def convert_rule_for_environment(
 
     # Check if environment filters directory exists and should be used
     filters_path = Path(f"environments/{environment}/filters")
+
+    # Load all yaml files from filters_path into a flattened list
+    filters = []
+    if filters_path.exists():
+        for filter_file in filters_path.rglob("*.y*ml"):
+            with open(filter_file, "rb") as f:
+                # Add all documents from each YAML file to the filters list
+                filters.extend(list(yaml.safe_load_all(f)))
+    logger.info(f"Loaded {len(filters)} filter documents from {filters_path}")
     if not include_exceptions or not filters_path.exists():
         if not include_exceptions:
             logger.info("Skipping exceptions for rule as requested")
@@ -214,12 +237,20 @@ def convert_rule_for_environment(
                 f"Filters directory {filters_path} does not exist for environment '{environment}'",
                 file=str(filters_path),
             )
-        sigma_rule = conversion.init_sigma_rule(Path(rule["path"]))
-    else:
-        sigma_rule = conversion.init_sigma_rule(Path(rule["path"]), filters_path)
-        logger.info(f"Including exceptions from {filters_path}")
 
-    result = conversion.convert_rule(rule["raw"], sigma_rule)
+        # sigma_rule = conversion.init_sigma_rule(Path(rule["path"]))
+        sigma_rule = conversion.init_sigma_rule([rule_raw])
+        logger.info(
+            f"Loaded sigma rule from '{Path(rule['path'])}' without exceptions directory"
+        )
+    else:
+        # sigma_rule = conversion.init_sigma_rule(Path(rule["path"]), filters_path)
+        sigma_rule = conversion.init_sigma_rule([rule_raw], filters)
+        logger.info(
+            f"Loaded sigma rule from '{rule['path']}' with exceptions directory '{filters_path}'"
+        )
+
+    result = conversion.convert_rule(rule_raw, sigma_rule)
 
     if result is not None:
         logger.info(f"Rule converted successfully for environment '{environment}'")
@@ -345,4 +376,5 @@ def convert_rules(
     if verbose:
         print_conversion_results(converted_rules)
 
+    return converted_rules
     return converted_rules
