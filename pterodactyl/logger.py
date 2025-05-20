@@ -34,9 +34,11 @@ def error(msg, *args, **kwargs):
     logging_kwargs = {
         k: v for k, v in kwargs.items() if k not in ("file", "line", "col")
     }
+    # Set stacklevel=2 to capture the caller's frame instead of this function
+    logging_kwargs["stacklevel"] = logging_kwargs.get("stacklevel", 2)
     logger.error(msg, *args, **logging_kwargs)
 
-    if os.environ.get("BITBUCKET_WORKSPACE"):
+    if os.environ.get("CI"):
         sys.exit(1)
         
     return msg
@@ -65,5 +67,7 @@ def warning(msg, *args, **kwargs):
     logging_kwargs = {
         k: v for k, v in kwargs.items() if k not in ("file", "line", "col")
     }
+    # Set stacklevel=2 to capture the caller's frame instead of this function
+    logging_kwargs["stacklevel"] = logging_kwargs.get("stacklevel", 2)
     logger.warning(msg, *args, **logging_kwargs)
     return msg
