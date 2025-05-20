@@ -36,7 +36,9 @@ setup(
         "pydantic",
         "dynaconf",
         "pySigma",
-        "pySigma-backend-elasticsearch"
+        "pySigma-backend-elasticsearch",
+        "splunk-sdk",
+        "pysigma-backend-splunk"
         # Add any other dependencies you need
     ],
     entry_points={
