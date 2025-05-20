@@ -34,7 +34,9 @@ setup(
         "requests",
         "pymongo",
         "pydantic",
-        "dynaconf"
+        "dynaconf",
+        "pySigma",
+        "pySigma-backend-elasticsearch"
         # Add any other dependencies you need
     ],
     entry_points={
