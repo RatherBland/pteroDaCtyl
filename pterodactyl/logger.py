@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 
 
 logger = logging.getLogger(__name__)
@@ -27,12 +28,17 @@ def error(msg, *args, **kwargs):
             print(f"::error file={file},line={line},col={col}::{msg}")
         else:
             print(f"::error::{msg}")
+    
 
     # Create a new dict without GitHub Actions specific keys
     logging_kwargs = {
         k: v for k, v in kwargs.items() if k not in ("file", "line", "col")
     }
     logger.error(msg, *args, **logging_kwargs)
+
+    if os.environ.get("BITBUCKET_WORKSPACE"):
+        sys.exit(1)
+        
     return msg
 
 
