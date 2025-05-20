@@ -12,7 +12,7 @@ postprocessing:
       {% endfor %}
       {%- set rule_data = {
       "name": rule.title,
-      "id": rule.id | lower,
+      "rule_id": rule.id | lower,
       "author": [rule.author] if rule.author is string else rule.author,
       "description": rule.description,
       "references": rule.references,
