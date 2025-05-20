@@ -35,7 +35,7 @@ setup(
         "pymongo",
         "pydantic",
         "dynaconf",
-        "pySigma",
+        "pySigma==0.11.19",
         "pySigma-backend-elasticsearch",
         "splunk-sdk",
         "pysigma-backend-splunk"
