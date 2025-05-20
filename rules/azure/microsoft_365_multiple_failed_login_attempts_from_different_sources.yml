@@ -21,6 +21,19 @@ detection:
         event.outcome: 'success'
     condition: selection_1 and not selection_2
 
+falsepositives:
+    - Automated services with misconfigured credentials
+    - Password resets affecting multiple services
+    - Large scale legitimate authentication attempts during service outages
+level: medium
+tags:
+    - attack.initial_access
+    - attack.t1110 # Brute Force
+    - attack.t1110.001 # Password Guessing
+references:
+    - https://learn.microsoft.com/en-us/entra/identity-platform/reference-error-codes
+    - https://elastic.github.io/detection-rules-explorer/rules/26f68dba-ce29-497b-8e13-b4fde1db5a2d
+
 tests:
     platforms:
         elastic:
@@ -41,15 +54,3 @@ correlation:
     gte: 20
     field: source.ip
 
-falsepositives:
-    - Automated services with misconfigured credentials
-    - Password resets affecting multiple services
-    - Large scale legitimate authentication attempts during service outages
-level: medium
-tags:
-    - attack.initial_access
-    - attack.t1110 # Brute Force
-    - attack.t1110.001 # Password Guessing
-references:
-    - https://learn.microsoft.com/en-us/entra/identity-platform/reference-error-codes
-    - https://elastic.github.io/detection-rules-explorer/rules/26f68dba-ce29-497b-8e13-b4fde1db5a2d

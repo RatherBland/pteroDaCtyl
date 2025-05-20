@@ -133,7 +133,6 @@ class Conversion:
             return converted_rule
         else:
             return error("Conversion aborted: rule unsupported")
-            return None
 
 
 def find_matching_rules(rules: list[dict], log: str) -> list[dict]:
@@ -187,10 +186,10 @@ def convert_rule_for_environment(
 
     # Create a deep copy of the rule to avoid modifying the original
     rule = copy.deepcopy(rule)
-    rule_raw = rule["raw"][0]
-    rule_environments = rule_raw.get("environments")
-    rule_directory = rule_raw.get(
-        "directory", rule_raw["logsource"].get("product", "unknown")
+    rule_raw = rule["raw"]
+    rule_environments = rule_raw[0].get("environments")
+    rule_directory = rule_raw[0].get(
+        "directory", rule_raw[0]["logsource"].get("product", "unknown")
     )
 
     # Check if environments is a dictionary and apply overrides
@@ -198,7 +197,7 @@ def convert_rule_for_environment(
         # Skip if environment not in rule's environments dictionary
         if environment not in rule_environments:
             logger.info(
-                f"Skipping rule '{rule_raw.get('title', 'Unknown title')}' as environment '{environment}' is not in the environments dictionary"
+                f"Skipping rule '{rule_raw[0].get('title', 'Unknown title')}' as environment '{environment}' is not in the environments dictionary"
             )
             return None
 
@@ -209,7 +208,7 @@ def convert_rule_for_environment(
         # Apply each override to the rule
         for key, value in env_overrides.items():
             if key != "environments":  # Avoid recursive overrides
-                rule_raw[key] = value
+                rule_raw[0][key] = value
                 logger.info(
                     f"Applied override for key '{key}' in environment '{environment}'"
                 )
@@ -239,13 +238,13 @@ def convert_rule_for_environment(
             )
 
         # sigma_rule = conversion.init_sigma_rule(Path(rule["path"]))
-        sigma_rule = conversion.init_sigma_rule([rule_raw])
+        sigma_rule = conversion.init_sigma_rule(rule_raw)
         logger.info(
             f"Loaded sigma rule from '{Path(rule['path'])}' without exceptions directory"
         )
     else:
         # sigma_rule = conversion.init_sigma_rule(Path(rule["path"]), filters_path)
-        sigma_rule = conversion.init_sigma_rule([rule_raw], filters)
+        sigma_rule = conversion.init_sigma_rule(rule_raw, filters)
         logger.info(
             f"Loaded sigma rule from '{rule['path']}' with exceptions directory '{filters_path}'"
         )
@@ -258,7 +257,7 @@ def convert_rule_for_environment(
             "environment": environment,
             "platform": platform,
             "directory": rule_directory,
-            "name": rule_raw.get("name", rule_raw.get("id")),
+            "name": rule_raw[0].get("name", rule_raw[0].get("id")),
             "rule": result[0],
         }
     else:
