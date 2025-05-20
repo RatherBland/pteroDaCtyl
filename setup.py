@@ -34,6 +34,7 @@ setup(
         "requests",
         "pymongo",
         "pydantic",
+        "dynaconf"
         # Add any other dependencies you need
     ],
     entry_points={
