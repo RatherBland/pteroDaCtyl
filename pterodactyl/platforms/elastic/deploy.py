@@ -11,7 +11,7 @@ def deploy_rule(
     # Construct the API endpoint for detection rules
     rule_id = rule.get("id")
     rule_name = rule.get("name")
-    endpoint = os.path.join(kibana_url, "api/detection_engine/rules")
+    endpoint = f"{kibana_url}/api/detection_engine/rules"
 
     headers = {"kbn-xsrf": "true", "Content-Type": "application/json"}
     if isinstance(auth, str):
@@ -50,9 +50,8 @@ def deploy_rules(rules: list[dict], environment_config: dict, platform_config: d
     for rule in rules:
         kibana_url = config["kibana_base_url"]
         if "kibana_workspace_name" in config:
-            kibana_url = os.path.join(
-                kibana_url, "s", config["kibana_workspace_name"].lower()
-            )
+            kibana_url = f"{kibana_url}/s/{config["kibana_workspace_name"].lower()}"
+            
         if "api_key" in config:
             auth = config["api_key"]
         else:
