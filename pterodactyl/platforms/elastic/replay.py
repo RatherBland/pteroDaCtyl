@@ -53,7 +53,7 @@ class ElasticPlatform:
                 # Test connection
                 if not self._client.ping():
                     raise ElasticConnectionFailure(
-                        "Failed to ping Elasticsearch server"
+                        f"Failed to ping Elasticsearch server: {self._client.info()}"
                     )
             except ElasticConnectionError as e:
                 error(f"Connection error: {e}")
