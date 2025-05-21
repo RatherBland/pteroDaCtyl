@@ -145,7 +145,9 @@ def execute_rule_test(
         )
         return test_rule, "success"
     else:
-        return test_rule, "failed"
+        return error(
+            f"Rule: {rule['path']} test failed on platform: {platform} with result count: {result_count}"
+        )
 
 
 def format_test_results(
