@@ -39,7 +39,8 @@ correlation:
         gte: 20
         field: source.ip
 
-description: Detects potential brute force attempts against Microsoft 365 services by monitoring failed authentication attempts from multiple sources or high volumes of failed logins
+description: 'Detects potential brute force attempts against Microsoft 365 services by monitoring failed authentication attempts 
+            from multiple sources or high volumes of failed logins. ## Triage and analysis'
 author: Guy
 
 falsepositives:

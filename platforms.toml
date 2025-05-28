@@ -35,6 +35,13 @@ pipelines = ["pipelines/elastic/aws/esql_ndjson.yml"]
 product = "azure"
 indexes = ["logs-azure"]
 
+[platforms.elastic.logs.o365]
+
+query_pipelines = []
+pipelines = ["pipelines/elastic/aws/esql_ndjson.yml"]
+product = "o365"
+indexes = ["logs-o365"]
+
 [platforms.splunk]
 
 query_language = "splunk"

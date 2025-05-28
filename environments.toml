@@ -14,6 +14,10 @@ kibana_base_url = "https://192.168.86.108:5601/"
 
 indexes = ["logs-azure-*-acme"]
 
+[environments.acme.platform.elastic.logs.o365]
+
+indexes = ["logs-o365-*-acme"]
+
 [environments.acme.platform.elastic.logs.cloudtrail]
 
 indexes = ["logs-aws.cloudtrail-*-acme"]

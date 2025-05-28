@@ -1,0 +1,64 @@
+title: Office 365 Potential Ransomware Activity
+name: office_365_potential_ransomware_activity
+id: b27841d8-8e81-4de7-ae1d-11b93e4a69c1
+status: experimental
+date: 2025-05-23
+logsource:
+    product: o365
+    service: o365 monitoring
+    category: web
+detection:
+    selection_1:
+        o365.audit.Workload: SecurityComplianceCenter
+        event.category: web 
+        o365.audit.Operation: "Potential ransomware activity"
+    selection_2:   
+        o365.audit.ResultStatus: 'success'
+    condition: selection_1 and selection_2
+
+
+tests:
+    platforms:
+        elastic:
+            false_positive_threshold: 10
+            true_positive_test_raw:
+                hits: 1
+                attack_data:
+                    data: '[{"o365":{"audit":{"UserTypeName":"Regular","AzureActiveDirectoryEventType":1,"UserKey":"c55d9426-a07d-4975-a6fb-35bd6713e931","ActorIpAddress":"49.255.12.182","source":"https://manage.office.com/api/v1.0/57447ff6-776d-4a8e-9620-d7026aab9e8f/activity/feed/audit/20250522234317098028136$20250522234513294003441$audit_azureactivedirectory$Audit_AzureActiveDirectory$aus9011","Operation":"Potential ransomware activity","OrganizationId":"57447ff6-776d-4a8e-9620-d7026aab9e8f","ExtendedProperties":[{"Value":"Redirect","Name":"ResultStatusDetail"},{"Value":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0","Name":"UserAgent"},{"Value":"OAuth2:Authorize","Name":"RequestType"}],"IntraSystemId":"5941f3f4-f72d-435e-80ac-8def2b533000","Target":[{"Type":0,"ID":"5f09333a-842c-47da-a157-57da27fcbca5"}],"RecordType":15,"Version":1,"ModifiedProperties":[],"SupportTicketId":"","Actor":[{"Type":0,"ID":"c55d9426-a07d-4975-a6fb-35bd6713e931"},{"Type":5,"ID":"Rob.Morris@keyton.com.au"}],"host":"cribl-logstream-workergroup-keyton-7d5768858-mbh9v","UserTypeDescription":"A regular user without admin permissions.","DeviceProperties":[{"Value":"d1e29991-1705-405d-84df-f21566a217d1","Name":"Id"},{"Value":"GM02C4EB","Name":"DisplayName"},{"Value":"Windows10","Name":"OS"},{"Value":"Edge","Name":"BrowserType"},{"Value":"True","Name":"IsCompliant"},{"Value":"True","Name":"IsCompliantAndManaged"},{"Value":"1","Name":"TrustType"},{"Value":"f42676d8-0ffd-4a14-90e2-4ecf90fc26d6","Name":"SessionId"}],"ActorContextId":"57447ff6-776d-4a8e-9620-d7026aab9e8f","ResultStatus":"success","ObjectId":"5f09333a-842c-47da-a157-57da27fcbca5","ErrorNumber":"0","ClientIP":"49.255.12.182","Workload":"SecurityComplianceCenter","UserId":"Rob.Morris@keyton.com.au","TargetContextId":"57447ff6-776d-4a8e-9620-d7026aab9e8f","CreationTime":"2025-05-22T23:43:45","Id":"5941f3f4-f72d-435e-80ac-8def2b533000","InterSystemsId":"ee07262f-5b72-4626-b47e-91d6d4dce938","ApplicationId":"89bee1f7-5e6e-4d8a-9f3d-ecd601259da7","UserType":0}},"cribl_pipe":["geo_by_GeoLite2-City","o365"],"@timestamp":"2025-05-22T23:43:45.000Z","cribl_breaker":"Office 365:mgmt-activity","source":{"geo":{"continent_name":"Oceania","city_name":"Sydney","country_iso_code":"AU","country_name":"Australia","location":{"lon":151.2006,"lat":-33.8715},"postal":"2000"},"ip":"49.255.12.182"},"event":{"agent_id_status":"missing","ingested":"2025-05-22T23:46:02Z","code":"AzureActiveDirectoryStsLogon","provider":"AzureActiveDirectory","kind":"event","code_description":"Secure Token Service (STS) logon events in Microsoft Entra ID.","action":"PotentialRansomwareActivity","id":"5941f3f4-f72d-435e-80ac-8def2b533000","category":"web","type":"access","outcome":"success"}}]'
+                    type: raw
+                    source: o365.audit
+
+description: 'Identifies when Microsoft Cloud App Security reports that a user has uploaded files to the cloud that might be infected with ransomware. ## Microsoft 365’s cloud services can be exploited by adversaries to distribute ransomware by uploading infected files. This detection rule leverages Microsoft Cloud App Security to identify suspicious uploads, focusing on successful events flagged as potential ransomware activity. By monitoring specific event datasets and actions, it helps security analysts pinpoint and mitigate ransomware threats, aligning with MITRE ATT&CK’s impact tactics. Potential investigation steps: Review the event details in the Microsoft Cloud App Security console to confirm the specific files and user involved in the "Potential ransomware activity" alert, Check the event.dataset field for o365.audit logs to gather additional context about the user’s recent activities and any other related events, Investigate the event.provider field to ensure the alert originated from the SecurityComplianceCenter, confirming the source of the detection, Analyze the event.category field to verify that the activity is categorized as web, which may indicate the method of file upload, Assess the user’s recent activity history and permissions to determine if the upload was intentional or potentially malicious, Contact the user to verify the legitimacy of the uploaded files and gather any additional context or explanations for the activity, If the files are confirmed or suspected to be malicious, initiate a response plan to contain and remediate any potential ransomware threat, including isolating affected systems and notifying relevant stakeholders'
+author: Gavin Smyth
+
+falsepositives:
+    - Legitimate file uploads by trusted users may trigger alerts if the files are mistakenly flagged as ransomware. To manage this, create exceptions for specific users or groups who frequently upload large volumes of files.
+    - Automated backup processes that upload encrypted files to the cloud can be misidentified as ransomware activity. Exclude these processes by identifying and whitelisting the associated service accounts or IP addresses.
+    - Certain file types or extensions commonly used in business operations might be flagged. Review and adjust the detection rule to exclude these file types if they are consistently identified as false positives.
+    - Collaborative tools that sync files across devices may cause multiple uploads that appear suspicious. Monitor and exclude these tools by recognizing their typical behavior patterns and adjusting the rule settings accordingly.
+    - Regularly review and update the list of exceptions to ensure that only verified non-threatening activities are excluded, maintaining the balance between security and operational efficiency.
+level: critical
+tags:
+    - attack.t1486 # Data Encrypted for Impact
+references:
+    - https://docs.microsoft.com/en-us/cloud-app-security/anomaly-detection-policy
+    - https://docs.microsoft.com/en-us/cloud-app-security/policy-template-reference
+
+
+suppression:
+    group_by: 
+        - o365.audit.UserId
+    duration: 
+        value: 1
+        unit: m
+    missing_fields_strategy: suppress
+
+environments:
+    acme:
+        suppression:
+            group_by: 
+                - o365.audit.UserId
+            duration: 
+                value: 5
+                unit: m
+            missing_fields_strategy: suppress
