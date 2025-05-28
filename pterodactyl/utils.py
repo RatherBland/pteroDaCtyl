@@ -5,7 +5,7 @@ import json
 from pterodactyl.logger import error
 
 
-def load_rules(path_to_rules: str) -> List[Dict[str, Any]]:
+def load_rules(path_to_rules: str, rule_name: str = "") -> List[Dict[str, Any]]:
     """
     Load sigma rules from a given directory.
 
@@ -18,7 +18,9 @@ def load_rules(path_to_rules: str) -> List[Dict[str, Any]]:
       - "rule": the parsed YAML content of the rule.
     """
     path = Path(path_to_rules)
-    if path_to_rules.endswith(".yml") or path_to_rules.endswith(".yaml"):
+    if path_to_rules.endswith(f"{rule_name}.yml") or path_to_rules.endswith(
+        f"{rule_name}.yaml"
+    ):
         files = [
             {
                 "path": path_to_rules,

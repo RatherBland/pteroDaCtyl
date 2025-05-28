@@ -28,7 +28,6 @@ def error(msg, *args, **kwargs):
             print(f"::error file={file},line={line},col={col}::{msg}")
         else:
             print(f"::error::{msg}")
-    
 
     # Create a new dict without GitHub Actions specific keys
     logging_kwargs = {
@@ -40,7 +39,7 @@ def error(msg, *args, **kwargs):
 
     if os.environ.get("CI"):
         sys.exit(1)
-        
+
     return msg
 
 

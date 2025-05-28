@@ -43,8 +43,6 @@ class TestCase(BaseModel):
 
 
 class DynamicTestingThreshold(BaseModel):
-    """Schema for dynamic testing thresholds"""
-
     false_positive_threshold: PositiveInt = Field(
         ..., description="Threshold for dynamic testing"
     )
@@ -52,8 +50,9 @@ class DynamicTestingThreshold(BaseModel):
 
 class Tests(BaseModel):
     platforms: Dict[
-        PlatformsEnum, Dict[TestNameEnum, TestCase | DynamicTestingThreshold]
-    ] = Field(description="Dictionary of platforms and their test cases")
+        PlatformsEnum,
+        Dict[TestNameEnum, TestCase] | DynamicTestingThreshold,
+    ]
 
     @model_validator(mode="after")
     def validate_platforms_not_empty(self):

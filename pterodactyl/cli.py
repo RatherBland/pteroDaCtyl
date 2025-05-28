@@ -104,6 +104,7 @@ def main():
                 platform_config=platform_config,
                 include_exceptions=args.include_exceptions,
                 verbose=args.verbose,
+                path_to_rules=path_to_rules,
             )
 
     elif args.command == "compile":
@@ -139,15 +140,16 @@ def main():
                 platform_config=platform_config["platforms"][args.platform],
             )
 
-        elif (args.platform and args.platform == "elastic"):
-            
+        elif args.platform and args.platform == "elastic":
             for env_name, env_data in environments_config["environments"].items():
                 # Check if this environment has Elastic platform configuration
                 if "platform" in env_data and "elastic" in env_data["platform"]:
                     print(f"Deploying to environment: {env_name}")
                     deploy_rules(
                         rules=load_rules(args.file),
-                        environment_config=environments_config["environments"][env_name]["platform"][args.platform],
+                        environment_config=environments_config["environments"][
+                            env_name
+                        ]["platform"][args.platform],
                         platform_config=platform_config["platforms"][args.platform],
                     )
 

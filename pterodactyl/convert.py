@@ -376,4 +376,3 @@ def convert_rules(
         print_conversion_results(converted_rules)
 
     return converted_rules
-    return converted_rules

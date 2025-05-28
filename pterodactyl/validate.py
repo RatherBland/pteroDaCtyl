@@ -7,6 +7,7 @@ from pterodactyl.convert import Conversion
 import copy
 from pterodactyl.convert import convert_rules
 from pterodactyl.utils import deep_merge
+from pterodactyl.utils import load_rules
 
 
 def validate_test_schema(rule: dict, platforms: list) -> Optional[Dict[str, Any]]:
@@ -344,6 +345,7 @@ def live_test_rules(
     platform_config: Dict[str, Any],
     include_exceptions: bool = True,
     verbose: bool = False,
+    path_to_rules: str = "rules",
 ):
     platform_functions = {
         "elastic": elastic.replay.execute_query,
@@ -370,7 +372,25 @@ def live_test_rules(
         result_count = platform_functions[platform](
             query=rule["rule"], config=env_platform_rule_config
         )
+
         rule["result_count"] = result_count
+
+        unconverted_rule = load_rules(path_to_rules, rule_name=rule["name"])
+
+        merged_unconverted_rule = deep_merge(
+            unconverted_rule[0]["raw"][0].get("environments", {}).get(environment, {}),
+            unconverted_rule[0]["raw"][0],
+        )
+
+        if (
+            result_count
+            > merged_unconverted_rule["tests"]["platforms"][platform][
+                "false_positive_threshold"
+            ]
+        ):
+            error(
+                f"Rule {rule['name']} in environment {environment} on platform {platform} exceeded false positive threshold with {result_count} results."
+            )
 
     if verbose:
         format_live_test_results(converted_rules)
