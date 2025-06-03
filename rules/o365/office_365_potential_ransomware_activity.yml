@@ -17,6 +17,10 @@ detection:
     condition: selection_1 and selection_2
 
 
+platforms:
+    elastic:
+        query_language: eql
+
 tests:
     platforms:
         elastic:

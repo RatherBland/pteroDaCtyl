@@ -8,11 +8,9 @@ title = "This is generic configuration for each SIEM platform. It is treated as 
 username = "elastic"
 password = "changeme"
 
-kibana_base_url = "http://localhost:5601"
+kibana_base_url = "https://192.168.86.108:5601/"
 kibana_workspace_name = "Default"
-elasticsearch_hosts = [
-    "http://localhost:9200"
-]
+elasticsearch_hosts = ["https://192.168.86.108:9200"]
 
 ssl_verify = false
 

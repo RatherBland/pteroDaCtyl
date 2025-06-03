@@ -80,6 +80,7 @@ def index_query_delete(
     query: str,
     config: dict,
     wait: int = 2,
+    query_language: str = "esql",
 ) -> int:
     try:
         elastic = ElasticPlatform(config)
@@ -107,9 +108,14 @@ def index_query_delete(
 
         time.sleep(wait)
 
-        logger.info(f"Executing query: {query}")
-        resp = client.esql.query(query=query)
-        result_count = len(resp["values"])
+        logger.info(f"Executing {query_language.upper()} query: {query}")
+
+        if query_language.lower() == "eql":
+            resp = client.eql.search(index=index, body={"query": query})
+            result_count = len(resp.get("hits", {}).get("events", []))
+        else:  # Default to ESQL
+            resp = client.esql.query(query=query)
+            result_count = len(resp.get("values", []))
 
         for doc_id in document_ids:
             client.delete(index=index, id=doc_id)
@@ -138,14 +144,20 @@ def count_docs(index: str, config: dict) -> int:
         return 0
 
 
-def execute_query(query: str, config: dict) -> int:
+def execute_query(query: str, config: dict, query_language: str = "esql") -> int:
     try:
         elastic = ElasticPlatform(config)
         client = elastic.client
 
-        logger.info(f"Executing query: {query}")
-        resp = client.esql.query(query=query)
-        return len(resp.get("values", []))
+        logger.info(f"Executing {query_language.upper()} query: {query}")
+
+        if query_language.lower() == "eql":
+            # For EQL, we need to specify an index pattern
+            resp = client.eql.search(index="*", body={"query": query})
+            return len(resp.get("hits", {}).get("events", []))
+        else:  # Default to ESQL
+            resp = client.esql.query(query=query)
+            return len(resp.get("values", []))
     except Exception as e:
         error(f"Error executing query: {e}")
         return 0

@@ -76,7 +76,12 @@ def delete_all(client):
 
 
 def index_query_delete(
-    data: str, index: str, query: str, config: dict, wait: int = 2
+    data: str,
+    index: str,
+    query: str,
+    config: dict,
+    wait: int = 2,
+    query_language: str = "spl",
 ) -> int:
     """
     Submits events to a Splunk index, executes a search query, then deletes the events.
@@ -188,7 +193,7 @@ def count_docs(index: str, config: dict) -> int:
         return 0
 
 
-def execute_query(query: str, config: dict) -> int:
+def execute_query(query: str, config: dict, query_language: str = "spl") -> int:
     """
     Executes a search query and returns the number of results.
 

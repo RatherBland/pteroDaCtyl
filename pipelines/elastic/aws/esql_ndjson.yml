@@ -32,10 +32,10 @@ postprocessing:
       "max_signals": 100,
       "exceptions_list": [],
       "setup": "",
-      "type": "esql",
+      "type": "eql" if rule.custom_attributes.platforms and rule.custom_attributes.platforms.elastic.query_language == "eql" else "esql",
       "note": "",
       "license": "DRL",
-      "language": "esql",
+      "language": "eql" if rule.custom_attributes.platforms and rule.custom_attributes.platforms.elastic.query_language == "eql" else "esql",
       "index": pipeline.vars.index_names | list,
       "query": query,
       "tags": tags,
@@ -46,5 +46,5 @@ postprocessing:
       "risk_score": 21
       }
       -%}
-      
+
       {{ rule_data | tojson }}

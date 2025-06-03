@@ -19,6 +19,11 @@ class PlatformsEnum(str, Enum):
     sentinel = "sentinel"
 
 
+class QueryLanguageEnum(str, Enum):
+    esql = "esql"
+    eql = "eql"
+
+
 class TestNameEnum(str, Enum):
     true_positive_test_url = "true_positive_test_url"
     true_positive_test_file = "true_positive_test_file"

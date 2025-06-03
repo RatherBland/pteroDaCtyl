@@ -67,7 +67,16 @@ class Conversion:
         backends = plugins.backends
         pipeline_resolver = plugins.get_pipeline_resolver()
         pipeline_config_group = self.get_pipeline_config_group(rule_content)
-        backend_name = self._platform_name
+
+        current_platform = None
+
+        if self._config.get("elasticsearch_hosts"):
+            current_platform = "elastic"
+        
+        try:
+            backend_name = rule_content['platforms'][current_platform]['query_language']
+        except KeyError:
+            backend_name = self._platform_name
 
         if pipeline_config_group:
             rule_supported = True

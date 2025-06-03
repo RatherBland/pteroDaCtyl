@@ -49,9 +49,10 @@ def validate_test_schema(rule: dict, platforms: list) -> Optional[Dict[str, Any]
         logger.info(f"Test schema validated for rule: {rule['path']}")
         return rule
     except ValidationError as e:
-        return error(
+        error(
             f"Test schema validation failed for rule: {rule['path']}, with errors: {e}"
         )
+        return None
 
     return None
 
@@ -73,7 +74,7 @@ def determine_test_platforms(
         if specific_platform in platform_config["platforms"]:
             return [specific_platform]
         else:
-            return error(
+            error(
                 f"Platform {specific_platform} is not available in the platform configuration."
             )
             return []
@@ -128,12 +129,21 @@ def execute_rule_test(
     ]
     index = platform_config["platforms"][platform]["logs"][pipeline_group]["indexes"][0]
 
+    # Extract query language from rule configuration
+    query_language = (
+        rule["raw"][0]
+        .get("platforms", {})
+        .get(platform, {})
+        .get("query_language", "esql")
+    )
+
     # Execute the platform-specific test function
     result_count = platform_functions[platform](
         data=data,
         index=index,
         query=converted_rule[0],
         config=platform_config["platforms"][platform],
+        query_language=query_language,
     )
 
     expected_hits = rule_tests["platforms"][platform]["true_positive_test_raw"]["hits"]
@@ -146,9 +156,10 @@ def execute_rule_test(
         )
         return test_rule, "success"
     else:
-        return error(
+        error(
             f"Rule: {rule['path']} test failed on platform: {platform} with result count: {result_count}"
         )
+        return test_rule, "failed"
 
 
 def format_test_results(
@@ -369,8 +380,19 @@ def live_test_rules(
             platform_config["platforms"][platform],
         )
 
+        # Extract query language from original rule configuration
+        unconverted_rule = load_rules(path_to_rules, rule_name=rule["name"])
+        query_language = (
+            unconverted_rule[0]["raw"][0]
+            .get("platforms", {})
+            .get(platform, {})
+            .get("query_language", "esql")
+        )
+
         result_count = platform_functions[platform](
-            query=rule["rule"], config=env_platform_rule_config
+            query=rule["rule"],
+            config=env_platform_rule_config,
+            query_language=query_language,
         )
 
         rule["result_count"] = result_count
