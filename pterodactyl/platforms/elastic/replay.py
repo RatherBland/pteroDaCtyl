@@ -81,6 +81,7 @@ def index_query_delete(
     config: dict,
     wait: int = 2,
     query_language: str = "esql",
+    timeframe: str = None,
 ) -> int:
     try:
         elastic = ElasticPlatform(config)
@@ -92,6 +93,24 @@ def index_query_delete(
         logger.info(f"Adding document(s) to index: {index}")
         actions = []
         data_list = data if isinstance(data, list) else [data]
+
+        if timeframe:
+            timespan_dsl = {
+                "query": {
+                    "bool": {
+                        "must": [
+                            {
+                                "range": {
+                                    "@timestamp": {
+                                        "gte": f"now-{timeframe}",
+                                        "lte": "now",
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
 
         for doc in data_list:
             doc_id = str(uuid.uuid4())
@@ -111,10 +130,16 @@ def index_query_delete(
         logger.info(f"Executing {query_language.upper()} query: {query}")
 
         if query_language.lower() == "eql":
-            resp = client.eql.search(index=index, body={"query": query})
+            resp = client.eql.search(
+                index=index,
+                body={"query": query},
+                filter=timespan_dsl if timeframe else None,
+            )
             result_count = len(resp.get("hits", {}).get("events", []))
         else:  # Default to ESQL
-            resp = client.esql.query(query=query)
+            resp = client.esql.query(
+                query=query, filter=timespan_dsl if timeframe else None
+            )
             result_count = len(resp.get("values", []))
 
         for doc_id in document_ids:
@@ -144,19 +169,45 @@ def count_docs(index: str, config: dict) -> int:
         return 0
 
 
-def execute_query(query: str, config: dict, query_language: str = "esql") -> int:
+def execute_query(
+    query: str, config: dict, query_language: str = "esql", timeframe: str = None
+) -> int:
     try:
         elastic = ElasticPlatform(config)
         client = elastic.client
 
         logger.info(f"Executing {query_language.upper()} query: {query}")
 
+        if timeframe:
+            timespan_dsl = {
+                "query": {
+                    "bool": {
+                        "must": [
+                            {
+                                "range": {
+                                    "@timestamp": {
+                                        "gte": f"now-{timeframe}",
+                                        "lte": "now",
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+
         if query_language.lower() == "eql":
             # For EQL, we need to specify an index pattern
-            resp = client.eql.search(index="*", body={"query": query})
+            resp = client.eql.search(
+                index="*",
+                body={"query": query},
+                filter=timespan_dsl if timeframe else None,
+            )
             return len(resp.get("hits", {}).get("events", []))
         else:  # Default to ESQL
-            resp = client.esql.query(query=query)
+            resp = client.esql.query(
+                query=query, filter=timespan_dsl if timeframe else None
+            )
             return len(resp.get("values", []))
     except Exception as e:
         error(f"Error executing query: {e}")

@@ -10,20 +10,21 @@ logsource:
 detection:
     selection_1:
         o365.audit.Workload: SecurityComplianceCenter
-        event.category: web 
+        event.category: web
         o365.audit.Operation: "Potential ransomware activity"
-    selection_2:   
+    selection_2:
         o365.audit.ResultStatus: 'success'
     condition: selection_1 and selection_2
 
 
 platforms:
     elastic:
-        query_language: eql
+        query_language: esql
 
 tests:
     platforms:
         elastic:
+            timeframe: 30d
             false_positive_threshold: 10
             true_positive_test_raw:
                 hits: 1
@@ -50,9 +51,9 @@ references:
 
 
 suppression:
-    group_by: 
+    group_by:
         - o365.audit.UserId
-    duration: 
+    duration:
         value: 1
         unit: m
     missing_fields_strategy: suppress
@@ -60,9 +61,9 @@ suppression:
 environments:
     acme:
         suppression:
-            group_by: 
+            group_by:
                 - o365.audit.UserId
-            duration: 
+            duration:
                 value: 5
                 unit: m
             missing_fields_strategy: suppress

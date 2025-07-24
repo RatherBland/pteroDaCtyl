@@ -389,20 +389,22 @@ def live_test_rules(
             .get("query_language", "esql")
         )
 
-        result_count = platform_functions[platform](
-            query=rule["rule"],
-            config=env_platform_rule_config,
-            query_language=query_language,
-        )
-
-        rule["result_count"] = result_count
-
         unconverted_rule = load_rules(path_to_rules, rule_name=rule["name"])
 
         merged_unconverted_rule = deep_merge(
             unconverted_rule[0]["raw"][0].get("environments", {}).get(environment, {}),
             unconverted_rule[0]["raw"][0],
         )
+
+        result_count = platform_functions[platform](
+            query=rule["rule"],
+            config=env_platform_rule_config,
+            query_language=query_language,
+            timeframe=merged_unconverted_rule["tests"]["platforms"][platform][
+                "timeframe"
+            ],
+        )
+        rule["result_count"] = result_count
 
         if (
             result_count
