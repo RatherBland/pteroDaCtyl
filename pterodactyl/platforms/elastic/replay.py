@@ -96,19 +96,17 @@ def index_query_delete(
 
         if timeframe:
             timespan_dsl = {
-                "query": {
-                    "bool": {
-                        "must": [
-                            {
-                                "range": {
-                                    "@timestamp": {
-                                        "gte": f"now-{timeframe}",
-                                        "lte": "now",
-                                    }
+                "bool": {
+                    "must": [
+                        {
+                            "range": {
+                                "@timestamp": {
+                                    "gte": f"now-{timeframe}",
+                                    "lte": "now",
                                 }
                             }
-                        ]
-                    }
+                        }
+                    ]
                 }
             }
 
@@ -180,19 +178,17 @@ def execute_query(
 
         if timeframe:
             timespan_dsl = {
-                "query": {
-                    "bool": {
-                        "must": [
-                            {
-                                "range": {
-                                    "@timestamp": {
-                                        "gte": f"now-{timeframe}",
-                                        "lte": "now",
-                                    }
+                "bool": {
+                    "must": [
+                        {
+                            "range": {
+                                "@timestamp": {
+                                    "gte": f"now-{timeframe}",
+                                    "lte": "now",
                                 }
                             }
-                        ]
-                    }
+                        }
+                    ]
                 }
             }
 
