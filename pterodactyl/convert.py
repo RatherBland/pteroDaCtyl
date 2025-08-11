@@ -7,6 +7,45 @@ from pterodactyl.platforms import elastic, splunk
 from sigma.processing.pipeline import ProcessingPipeline
 from pterodactyl.utils import deep_merge
 import yaml
+import re
+
+
+def substitute_indexes(raw_query: str, indexes: list) -> str:
+    """
+    Substitute index placeholders in raw queries with actual index values.
+    
+    Supports:
+    - {{index}} - replaced with first index or comma-separated list if multiple
+    - {{index[0]}}, {{index[1]}}, etc. - replaced with specific index by position
+    
+    Args:
+        raw_query: Query string containing index placeholders
+        indexes: List of index patterns from environment configuration
+        
+    Returns:
+        Query string with placeholders replaced by actual index values
+    """
+    if not indexes:
+        logger.warning("No indexes provided for substitution")
+        return raw_query
+    
+    # Replace {{index}} with first index or comma-separated list
+    if len(indexes) == 1:
+        raw_query = re.sub(r'\{\{index\}\}', indexes[0], raw_query)
+    else:
+        # For multiple indexes, join with comma (platform-specific formatting may be needed)
+        raw_query = re.sub(r'\{\{index\}\}', ','.join(indexes), raw_query)
+    
+    # Replace indexed placeholders {{index[n]}}
+    for i, index in enumerate(indexes):
+        raw_query = re.sub(rf'\{{\{{index\[{i}\]\}}\}}', index, raw_query)
+    
+    # Log if any placeholders remain (might indicate missing indexes)
+    remaining_placeholders = re.findall(r'\{\{index(?:\[\d+\])?\}\}', raw_query)
+    if remaining_placeholders:
+        logger.warning(f"Unresolved index placeholders remain: {remaining_placeholders}")
+    
+    return raw_query
 
 
 class Conversion:
@@ -57,26 +96,97 @@ class Conversion:
 
         return sigma_rule
 
-    def convert_rule(self, rule_content: dict, sigma_rule: SigmaCollection) -> None:
+    def convert_rule(self, rule_content: dict, sigma_rule: SigmaCollection | None) -> None:
         rule_content = rule_content[0] if type(rule_content) is list else rule_content
 
         logger.info(
             f"Starting conversion for rule: {rule_content.get('title', 'Unknown title')}"
         )
+        
+        # Determine current platform
+        current_platform = None
+        if self._config.get("elasticsearch_hosts"):
+            current_platform = "elastic"
+        elif self._config.get("host"):  # Splunk config
+            current_platform = "splunk"
+        
+        # Check for raw query in platform configuration
+        platform_config = rule_content.get('platforms', {}).get(current_platform, {})
+        raw_query = platform_config.get('raw_query')
+        
+        # Setup common pipeline infrastructure
         plugins = InstalledSigmaPlugins.autodiscover()
         backends = plugins.backends
         pipeline_resolver = plugins.get_pipeline_resolver()
         pipeline_config_group = self.get_pipeline_config_group(rule_content)
-
-        current_platform = None
-
-        if self._config.get("elasticsearch_hosts"):
-            current_platform = "elastic"
         
         try:
             backend_name = rule_content['platforms'][current_platform]['query_language']
         except KeyError:
             backend_name = self._platform_name
+            
+        if raw_query and pipeline_config_group:
+            # Handle raw query with pipeline formatting
+            logger.info(f"Processing raw query for platform '{current_platform}'")
+            
+            # Get indexes for substitution
+            indexes = self._config["logs"][pipeline_config_group].get("indexes", [])
+            
+            # Substitute index placeholders in raw query
+            converted_query = substitute_indexes(raw_query, indexes)
+            
+            # For raw queries, we need to create a minimal Sigma structure
+            # and apply only the formatting pipelines
+            if not self._testing:
+                # Apply formatting pipelines (e.g., esql_ndjson.yml)
+                pipeline_config = self._config["logs"][pipeline_config_group].get("pipelines", [])
+                
+                # Create a minimal Sigma rule for metadata preservation
+                minimal_rule_dict = {
+                    "title": rule_content.get("title", "Unknown"),
+                    "id": rule_content.get("id", "00000000-0000-0000-0000-000000000000"),
+                    "description": rule_content.get("description", ""),
+                    "author": rule_content.get("author", ""),
+                    "references": rule_content.get("references", []),
+                    "tags": rule_content.get("tags", []),
+                    "falsepositives": rule_content.get("falsepositives", []),
+                    "level": rule_content.get("level", "medium"),
+                    "logsource": rule_content.get("logsource", {}),
+                    "detection": {"selection": {"field": "value"}, "condition": "selection"},  # Dummy detection for Sigma
+                    "custom_attributes": rule_content  # Preserve full rule for template access
+                }
+                
+                # Create SigmaCollection with minimal rule
+                sigma_rule = SigmaCollection.from_dicts([minimal_rule_dict])
+                
+                # Setup pipeline with formatting only
+                if backend_name in ("esql", "eql"):
+                    include_indexes = ProcessingPipeline().from_dict(
+                        elastic.handle_indexes.add_indexes(indexes)
+                    )
+                    pipeline_resolver.add_pipeline_class(include_indexes)
+                    pipeline_config.append("add_elastic_indexes")
+                
+                pipeline = pipeline_resolver.resolve(pipeline_config)
+                backend_class = backends[backend_name]
+                backend: Backend = backend_class(processing_pipeline=pipeline)
+                
+                # Convert through backend to apply formatting
+                # The backend will apply the template, but we need to inject our raw query
+                converted_rules = backend.convert(sigma_rule)
+                
+                # Replace the dummy query with our actual raw query in the output
+                if converted_rules and len(converted_rules) > 0:
+                    # Parse the JSON output and replace the query field
+                    import json
+                    result_dict = json.loads(converted_rules[0])
+                    result_dict["query"] = converted_query
+                    return [json.dumps(result_dict)]
+                
+                return [converted_query]
+            else:
+                # For testing, return raw query directly
+                return [converted_query]
 
         if pipeline_config_group:
             rule_supported = True
@@ -226,37 +336,47 @@ def convert_rule_for_environment(
     conversion = Conversion(env_platform_rule_config, testing=testing)
     logger.info(f"Initialized Conversion for environment '{environment}'")
 
-    # Check if environment filters directory exists and should be used
-    filters_path = Path(f"environments/{environment}/filters")
-
-    # Load all yaml files from filters_path into a flattened list
-    filters = []
-    if filters_path.exists():
-        for filter_file in filters_path.rglob("*.y*ml"):
-            with open(filter_file, "rb") as f:
-                # Add all documents from each YAML file to the filters list
-                filters.extend(list(yaml.safe_load_all(f)))
-    logger.info(f"Loaded {len(filters)} filter documents from {filters_path}")
-    if not include_exceptions or not filters_path.exists():
-        if not include_exceptions:
-            logger.info("Skipping exceptions for rule as requested")
-        elif not filters_path.exists():
-            warning(
-                f"Filters directory {filters_path} does not exist for environment '{environment}'",
-                file=str(filters_path),
-            )
-
-        # sigma_rule = conversion.init_sigma_rule(Path(rule["path"]))
-        sigma_rule = conversion.init_sigma_rule(rule_raw)
-        logger.info(
-            f"Loaded sigma rule from '{Path(rule['path'])}' without exceptions directory"
-        )
+    # Check if rule has raw_query - if so, skip Sigma processing
+    platform_config = rule_raw[0].get('platforms', {}).get(platform, {})
+    has_raw_query = 'raw_query' in platform_config
+    
+    if has_raw_query:
+        # For raw queries, skip Sigma collection initialization
+        logger.info(f"Rule uses raw query for platform '{platform}', skipping Sigma processing")
+        sigma_rule = None
     else:
-        # sigma_rule = conversion.init_sigma_rule(Path(rule["path"]), filters_path)
-        sigma_rule = conversion.init_sigma_rule(rule_raw, filters)
-        logger.info(
-            f"Loaded sigma rule from '{rule['path']}' with exceptions directory '{filters_path}'"
-        )
+        # Standard Sigma processing
+        # Check if environment filters directory exists and should be used
+        filters_path = Path(f"environments/{environment}/filters")
+
+        # Load all yaml files from filters_path into a flattened list
+        filters = []
+        if filters_path.exists():
+            for filter_file in filters_path.rglob("*.y*ml"):
+                with open(filter_file, "rb") as f:
+                    # Add all documents from each YAML file to the filters list
+                    filters.extend(list(yaml.safe_load_all(f)))
+        logger.info(f"Loaded {len(filters)} filter documents from {filters_path}")
+        if not include_exceptions or not filters_path.exists():
+            if not include_exceptions:
+                logger.info("Skipping exceptions for rule as requested")
+            elif not filters_path.exists():
+                warning(
+                    f"Filters directory {filters_path} does not exist for environment '{environment}'",
+                    file=str(filters_path),
+                )
+
+            # sigma_rule = conversion.init_sigma_rule(Path(rule["path"]))
+            sigma_rule = conversion.init_sigma_rule(rule_raw)
+            logger.info(
+                f"Loaded sigma rule from '{Path(rule['path'])}' without exceptions directory"
+            )
+        else:
+            # sigma_rule = conversion.init_sigma_rule(Path(rule["path"]), filters_path)
+            sigma_rule = conversion.init_sigma_rule(rule_raw, filters)
+            logger.info(
+                f"Loaded sigma rule from '{rule['path']}' with exceptions directory '{filters_path}'"
+            )
 
     result = conversion.convert_rule(rule_raw, sigma_rule)
 

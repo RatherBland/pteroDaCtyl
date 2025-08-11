@@ -102,7 +102,17 @@ def execute_rule_test(
         "success", "failed", or "other"
     """
     conversion = Conversion(config=platform_config["platforms"][platform], testing=True)
-    sigma_rule = conversion.init_sigma_rule(rule["raw"])
+    
+    # Check if rule has raw_query
+    platform_config_in_rule = rule["raw"][0].get('platforms', {}).get(platform, {})
+    has_raw_query = 'raw_query' in platform_config_in_rule
+    
+    if has_raw_query:
+        # For raw queries, skip Sigma collection initialization
+        sigma_rule = None
+    else:
+        sigma_rule = conversion.init_sigma_rule(rule["raw"])
+    
     converted_rule = conversion.convert_rule(rule["raw"][0], sigma_rule)
     pipeline_group = conversion.get_pipeline_config_group(rule["raw"][0])
 

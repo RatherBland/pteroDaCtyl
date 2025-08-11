@@ -22,6 +22,9 @@ class PlatformsEnum(str, Enum):
 class QueryLanguageEnum(str, Enum):
     esql = "esql"
     eql = "eql"
+    spl = "spl"
+    kql = "kql"
+    lucene = "lucene"
 
 
 class TestNameEnum(str, Enum):
@@ -51,6 +54,15 @@ class DynamicTestingThreshold(BaseModel):
     false_positive_threshold: PositiveInt = Field(
         ..., description="Threshold for dynamic testing"
     )
+
+
+class PlatformConfig(BaseModel):
+    """Configuration for platform-specific settings including raw queries"""
+    query_language: QueryLanguageEnum = Field(..., description="Query language for the platform")
+    raw_query: str | None = Field(None, description="Raw query that bypasses Sigma conversion")
+    
+    class Config:
+        extra = "allow"  # Allow additional platform-specific fields
 
 
 class Tests(BaseModel):
