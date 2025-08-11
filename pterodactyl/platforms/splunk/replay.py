@@ -193,7 +193,7 @@ def count_docs(index: str, config: dict) -> int:
         return 0
 
 
-def execute_query(query: str, config: dict, query_language: str = "spl") -> int:
+def execute_query(query: str, config: dict, query_language: str = "spl", timeframe: str = None) -> int:
     """
     Executes a search query and returns the number of results.
 

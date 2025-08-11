@@ -411,7 +411,7 @@ def live_test_rules(
             query=rule["rule"],
             config=env_platform_rule_config,
             query_language=query_language,
-            timeframe=merged_unconverted_rule["tests"]["platforms"][platform].get(
+            timeframe=merged_unconverted_rule.get("tests", {}).get("platforms", {}).get(platform, {}).get(
                 "timeframe", "90d"
             ),
         )
