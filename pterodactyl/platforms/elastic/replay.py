@@ -81,7 +81,7 @@ def index_query_delete(
     config: dict,
     wait: int = 2,
     query_language: str = "esql",
-    timeframe: str = None,
+    # timeframe: str = None,
 ) -> int:
     try:
         elastic = ElasticPlatform(config)
@@ -94,21 +94,21 @@ def index_query_delete(
         actions = []
         data_list = data if isinstance(data, list) else [data]
 
-        if timeframe:
-            timespan_dsl = {
-                "bool": {
-                    "must": [
-                        {
-                            "range": {
-                                "@timestamp": {
-                                    "gte": f"now-{timeframe}",
-                                    "lte": "now",
-                                }
-                            }
-                        }
-                    ]
-                }
-            }
+        # if timeframe:
+        #     timespan_dsl = {
+        #         "bool": {
+        #             "must": [
+        #                 {
+        #                     "range": {
+        #                         "@timestamp": {
+        #                             "gte": f"now-{timeframe}",
+        #                             "lte": "now",
+        #                         }
+        #                     }
+        #                 }
+        #             ]
+        #         }
+        #     }
 
         for doc in data_list:
             doc_id = str(uuid.uuid4())
@@ -131,12 +131,13 @@ def index_query_delete(
             resp = client.eql.search(
                 index=index,
                 body={"query": query},
-                filter=timespan_dsl if timeframe else None,
+                # filter=timespan_dsl if timeframe else None,
             )
             result_count = len(resp.get("hits", {}).get("events", []))
         else:  # Default to ESQL
             resp = client.esql.query(
-                query=query, filter=timespan_dsl if timeframe else None
+                query=query,
+                #  filter=timespan_dsl if timeframe else None
             )
             result_count = len(resp.get("values", []))
 

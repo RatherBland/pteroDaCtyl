@@ -1,5 +1,5 @@
 title: Microsoft 365 Multiple Failed Login Attempts
-name: microsoft_365_multiple_failed_login_attempts
+name: microsoft_365_multiple_failed_login_attempts_from_different_sources
 # status: experimental
 date: 2025-02-17
 logsource:
@@ -21,6 +21,7 @@ detection:
 tests:
     platforms:
         elastic:
+            false_positive_threshold: 3
             true_positive_test_raw:
                 hits: 1
                 attack_data:
@@ -32,14 +33,14 @@ title: Microsoft 365 Multiple Failed Login Attempts from Different Sources
 id: 5f234c89-7c13-4c8a-9f1a-b543edf23e89
 correlation:
     type: value_count
-    rules: microsoft_365_multiple_failed_login_attempts
+    rules: microsoft_365_multiple_failed_login_attempts_from_different_sources
     timespan: 30m
     group-by: azure.signinlogs.properties.user_principal_name
-    condition: 
+    condition:
         gte: 20
         field: source.ip
 
-description: 'Detects potential brute force attempts against Microsoft 365 services by monitoring failed authentication attempts 
+description: 'Detects potential brute force attempts against Microsoft 365 services by monitoring failed authentication attempts
             from multiple sources or high volumes of failed logins. ## Triage and analysis'
 author: Guy
 

@@ -1,0 +1,43 @@
+title: O365 Exchange Suspicious Mailbox Right Delegation
+name: o365_exchange_suspicious_mailbox_right_delegation
+id: 73f4712d-e049-4510-870f-d20a896cadfa
+status: experimental
+date: 2025-07-31
+logsource:
+    product: o365
+    service: audit
+    category: web
+detection:
+    o365_add_mailbox_permission:
+        event.provider: Exchange
+        event.action: 'Add-MailboxPermission'
+        o365.audit.Parameters.AccessRights|contains:
+            - 'FullAccess'
+            - 'SendAs'
+            - 'SendOnBehalf'
+    event_success:
+        event.outcome: 'success'
+    condition: o365_add_mailbox_permission and event_success
+
+tests:
+    platforms:
+        elastic:
+            timeframe: 30d
+            false_positive_threshold: 25
+            true_positive_test_raw:
+                hits: 1
+                attack_data:
+                    data: '{"server":{"address":"15.20.8964.025","domain":"SYCP282MB0192"},"source":{"geo":{"region_iso_code":"AU-NSW","continent_name":"Oceania","city_name":"Sydney","country_iso_code":"AU","country_name":"Australia","region_name":"New South Wales","location":{"lon":151.1997,"lat":-33.8672}},"as":{"number":8075,"organization":{"name":"MICROSOFT-CORP-MSN-AS-BLOCK"}},"port":12483,"ip":"4.237.19.230"},"network":{"type":"ipv4"},"o365":{"audit":{"UserKey":"df.ca@ACENAustralia.onmicrosoft.com","TokenObjectId":"e31e3399-af47-422c-83d1-0e1e1c1ad23c","RecordType":"1","Version":"1","SessionId":"005f17d9-2891-7b5a-63ea-7516c435bab4","Parameters":{"AccessRights":"FullAccess","User":"708a1e4d-0131-4c70-8a56-2f670758bf84","InheritanceType":"All","Identity":"56df02b4-bf27-492a-9303-89bae388ea31"},"RequestId":"2d8075ad-77a9-0ab6-fa59-13297faec109","ResultStatus":"True","ObjectId":"VOW Tenders","ExternalAccess":false,"TokenTenantId":"e06ef81a-cec7-4fb2-afbe-bdd6a52305f1","AppAccessContext":{"AADSessionId":"005f17d9-2891-7b5a-63ea-7516c435bab4","UniqueTokenId":"9xriXYHVc0C4vkfhjtEGAA","IssuedAtTime":"2025-07-29T01:55:53"},"UserId":"df.ca@ACENAustralia.onmicrosoft.com","CreationTime":"2025-07-29T03:05:45","UserType":"2","AppPoolName":"MSExchangeAdminApiNetCore"}},"cribl_pipe":"o365-v2","@timestamp":"2025-07-29T03:05:45.000Z","ecs":{"version":"8.11.0"},"related":{"ip":["4.237.19.230"],"user":["df.ca","708a1e4d-0131-4c70-8a56-2f670758bf84"]},"organization":{"name":"UPCAustralia.onmicrosoft.com","id":"e06ef81a-cec7-4fb2-afbe-bdd6a52305f1"},"host":{"name":"UPCAustralia.onmicrosoft.com","id":"e06ef81a-cec7-4fb2-afbe-bdd6a52305f1"},"client":{"address":"4.237.19.230","port":12483,"ip":"4.237.19.230"},"event":{"agent_id_status":"missing","ingested":"2025-07-29T03:18:02Z","code":"ExchangeAdmin","provider":"Exchange","kind":"event","action":"Add-MailboxPermission","id":"3292b698-bc7e-4ba9-9449-08ddce4ccff1","type":["info"],"category":["web"],"outcome":"success"},"user":{"domain":"ACENAustralia.onmicrosoft.com","name":"df.ca","id":"df.ca@ACENAustralia.onmicrosoft.com","email":"df.ca@ACENAustralia.onmicrosoft.com"}}'
+                    type: raw
+                    source: o365.audit
+
+description: 'Identifies the assignment of rights to access content from another mailbox. An adversary may use the compromised account to send messages to other accounts in the network of the target organization while creating inbox rules, so messages can evade spam/phishing detection mechanisms.'
+author: Viruna Tennakoon
+
+falsepositives:
+    - Assignment of rights to a service account.
+level: low
+tags:
+    - attack.persistence
+    - attack.t1098 # Account Manipulation
+    - attack.t1098.002 # Additional Email Delegate Permissions

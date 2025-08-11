@@ -382,6 +382,7 @@ def live_test_rules(
 
         # Extract query language from original rule configuration
         unconverted_rule = load_rules(path_to_rules, rule_name=rule["name"])
+
         query_language = (
             unconverted_rule[0]["raw"][0]
             .get("platforms", {})
@@ -400,9 +401,9 @@ def live_test_rules(
             query=rule["rule"],
             config=env_platform_rule_config,
             query_language=query_language,
-            timeframe=merged_unconverted_rule["tests"]["platforms"][platform][
-                "timeframe"
-            ],
+            timeframe=merged_unconverted_rule["tests"]["platforms"][platform].get(
+                "timeframe", "90d"
+            ),
         )
         rule["result_count"] = result_count
 
