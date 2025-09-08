@@ -58,9 +58,14 @@ class DynamicTestingThreshold(BaseModel):
 
 class PlatformConfig(BaseModel):
     """Configuration for platform-specific settings including raw queries"""
-    query_language: QueryLanguageEnum = Field(..., description="Query language for the platform")
-    raw_query: str | None = Field(None, description="Raw query that bypasses Sigma conversion")
-    
+
+    query_language: QueryLanguageEnum = Field(
+        ..., description="Query language for the platform"
+    )
+    raw_query: str | None = Field(
+        None, description="Raw query that bypasses Sigma conversion"
+    )
+
     class Config:
         extra = "allow"  # Allow additional platform-specific fields
 
@@ -107,9 +112,9 @@ class RuleSchema(BaseModel):
     @model_validator(mode="after")
     def validate_mitre_tags(self):
         """Validate that at least one MITRE tag exists"""
-        if not any(tag.startswith("attack-") for tag in self.tags):
+        if not any(tag.startswith("attack.") for tag in self.tags):
             raise ValueError(
-                "At least one MITRE tag starting with 'attack-' must be included"
+                "At least one MITRE tag starting with 'attack.' must be included"
             )
         return self
 

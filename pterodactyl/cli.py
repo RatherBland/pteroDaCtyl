@@ -11,6 +11,7 @@ from pterodactyl.validate import (
 import argparse
 from pterodactyl.utils import load_rules, write_converted_rule
 from pterodactyl.platforms.elastic.deploy import deploy_rules
+from pterodactyl.lint import lint_ruleset
 
 
 def main():
@@ -83,6 +84,14 @@ def main():
         required=False,
     )
 
+    # Lint subcommand
+    lint_parser = subparsers.add_parser(
+        "lint", help="Lint Sigma rules for required and recommended extensions"
+    )
+    lint_parser.add_argument(
+        "-f", "--file", help="The path to the detection(s) to lint", required=False
+    )
+
     args = parser.parse_args()
 
     if hasattr(args, "file") and args.file:
@@ -152,6 +161,14 @@ def main():
                         ]["platform"][args.platform],
                         platform_config=platform_config["platforms"][args.platform],
                     )
+
+    elif args.command == "lint":
+        errors, warnings = lint_ruleset(load_rules(path_to_rules))
+        if errors:
+            # Non-zero exit for CI when errors are present
+            import sys
+
+            sys.exit(1)
 
     else:
         parser.print_help()
