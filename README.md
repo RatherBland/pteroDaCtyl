@@ -216,6 +216,51 @@ This command:
 3. Uses the appropriate backend (e.g., Elastic or Splunk) to output the converted rule.
 4. Saves compiled rules to the `output` directory
 
+### Using Raw Queries
+
+PteroDaCtyl can bypass Sigma detection translation and inject a hand-crafted query by reading a `raw_query` field under the platform configuration inside a rule. When present, the converter skips Sigma expression building, copies your query into the compiled artifact, and still applies the configured pipelines so scheduling metadata, templates, and deployment formats remain consistent.
+
+- Keep `platforms.<platform>.query_language` set to the desired backend (for example `esql` or `eql`) so the correct formatter runs.
+- The converter still resolves a pipeline config group from the rule `logsource`; ensure a matching `[platforms.<platform>.logs.<group>]` entry exists in `platforms.toml` with the pipelines you expect.
+- Index placeholders such as `{{index}}` (all indexes joined) and `{{index[0]}}`, `{{index[1]}}`, etc. are substituted from the active configuration before the query is emitted.
+- `pterodactyl validate` respects the same shortcut, so validation and compilation both exercise the raw query instead of the Sigma `detection` block.
+
+#### ESQL example
+
+```yaml
+title: Suspicious Login Burst
+logsource:
+  product: o365
+platforms:
+  elastic:
+    query_language: esql
+    raw_query: |
+      FROM {{index}}
+      | WHERE event.action == "login"
+      | STATS count = COUNT(*) BY user.name
+      | WHERE count > 5
+```
+
+If the matching logsource in `platforms.toml` defines `indexes = ["logs-o365", "logs-o365-archive"]`, the converter writes `FROM logs-o365,logs-o365-archive` into the compiled query while preserving the rule metadata.
+
+#### EQL example
+
+```yaml
+title: Suspicious Dual-Stage Activity
+logsource:
+  product: endpoint
+platforms:
+  elastic:
+    query_language: eql
+    raw_query: |
+      index = {{index[0]}}
+      sequence by host.id with maxspan=5m
+        [process where process.name == "cmd.exe" and process.args : "*rundll32*"]
+        [network where network.direction == "outgoing" and network.port == 4444]
+```
+
+With `indexes = ["logs-endpoint-*", "logs-endpoint-archive"]` the placeholder resolves to the first index, and the generated detection artifact contains your EQL sequence alongside the usual schedule and tag metadata.
+
 ### Deploying Rules
 
 To deploy a rule to Elastic in a specific environment:
