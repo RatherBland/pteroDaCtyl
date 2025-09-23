@@ -417,12 +417,21 @@ def live_test_rules(
         )
         rule["result_count"] = result_count
 
-        if (
-            result_count
-            > merged_unconverted_rule["tests"]["platforms"][platform][
-                "false_positive_threshold"
-            ]
-        ):
+        platform_tests = (
+            merged_unconverted_rule.get("tests", {})
+            .get("platforms", {})
+            .get(platform)
+        )
+
+        threshold = None
+        if isinstance(platform_tests, dict):
+            threshold = platform_tests.get("false_positive_threshold")
+
+        if threshold is None:
+            warning(
+                f"False positive threshold not configured for rule {rule['name']} in environment {environment} on platform {platform}; skipping threshold evaluation."
+            )
+        elif result_count > threshold:
             error(
                 f"Rule {rule['name']} in environment {environment} on platform {platform} exceeded false positive threshold with {result_count} results."
             )

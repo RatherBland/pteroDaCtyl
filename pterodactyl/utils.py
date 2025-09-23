@@ -7,34 +7,36 @@ from pterodactyl.logger import error
 
 def load_rules(path_to_rules: str, rule_name: str = "") -> List[Dict[str, Any]]:
     """
-    Load sigma rules from a given directory.
+    Load sigma rules from a given directory or a single file and optionally filter by rule name.
 
     Parameters:
-    path_to_rules (str): The directory path where sigma rule YAML files are stored.
+    path_to_rules (str): The directory path or file path where sigma rule YAML files are stored.
+    rule_name (str): Optional sigma rule "name" field to filter the results.
 
     Returns:
     List[Dict[str, Any]]: A list of dictionaries, each containing:
       - "path": the file path of the rule as a string.
-      - "rule": the parsed YAML content of the rule.
+      - "raw": the parsed YAML content of the rule.
     """
     path = Path(path_to_rules)
-    if path_to_rules.endswith(f"{rule_name}.yml") or path_to_rules.endswith(
-        f"{rule_name}.yaml"
-    ):
-        files = [
-            {
-                "path": path_to_rules,
-                "raw": list(yaml.safe_load_all(open(path_to_rules, "rb"))),
-            }
-        ]
+
+    if path.is_file():
+        candidates = [path]
     else:
-        files = [
-            {
-                "path": str(rule_file),
-                "raw": list(yaml.safe_load_all(open(rule_file, "rb"))),
-            }
-            for rule_file in path.rglob("*.y*ml")
-        ]
+        candidates = list(path.rglob("*.y*ml"))
+
+    files: List[Dict[str, Any]] = []
+    for rule_file in candidates:
+        with rule_file.open("rb") as handle:
+            raw_documents = list(yaml.safe_load_all(handle))
+
+        if rule_name:
+            primary_doc = raw_documents[0] if raw_documents else {}
+            if primary_doc.get("name") != rule_name:
+                continue
+
+        files.append({"path": str(rule_file), "raw": raw_documents})
+
     return files
 
 
