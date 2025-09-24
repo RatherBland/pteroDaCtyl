@@ -36,7 +36,15 @@ postprocessing:
       "note": "",
       "license": "DRL",
       "language": "eql" if rule.custom_attributes.platforms and rule.custom_attributes.platforms.elastic.query_language == "eql" else "esql",
-      "index": pipeline.vars.index_names | list,
+      {%- set state_indexes = pipeline.state.get('index') %}
+      {%- if state_indexes is string %}
+      {%- set resolved_indexes = [state_indexes] %}
+      {%- elif state_indexes is iterable %}
+      {%- set resolved_indexes = state_indexes | list %}
+      {%- else %}
+      {%- set resolved_indexes = pipeline.vars.index_names | list %}
+      {%- endif %}
+      "index": resolved_indexes,
       "query": query,
       "tags": tags,
       "actions": [],

@@ -15,6 +15,17 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 
+# Controls whether pterodactyl.logger.error should terminate the process.
+_EXIT_ON_ERROR = True
+
+
+def set_exit_on_error(should_exit: bool) -> None:
+    """Configure whether calls to error() should exit the process."""
+
+    global _EXIT_ON_ERROR
+    _EXIT_ON_ERROR = should_exit
+
+
 def error(msg, *args, **kwargs):
     """Log an error message and return 1 to break execution flow."""
 
@@ -37,7 +48,7 @@ def error(msg, *args, **kwargs):
     logging_kwargs["stacklevel"] = logging_kwargs.get("stacklevel", 2)
     logger.error(msg, *args, **logging_kwargs)
 
-    if os.environ.get("CI"):
+    if os.environ.get("CI") and _EXIT_ON_ERROR:
         sys.exit(1)
 
     return msg

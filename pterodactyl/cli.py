@@ -12,12 +12,17 @@ import argparse
 from pterodactyl.utils import load_rules, write_converted_rule
 from pterodactyl.platforms.elastic.deploy import deploy_rules
 from pterodactyl.lint import lint_ruleset
+from pterodactyl.logger import error, set_exit_on_error
 
 
 def main():
-    environments_config = load_environments_config()
-    pterodactyl_config = load_pterodactyl_config()
-    platform_config = load_platform_config()
+    try:
+        environments_config = load_environments_config()
+        pterodactyl_config = load_pterodactyl_config()
+        platform_config = load_platform_config()
+    except FileNotFoundError as exc:
+        error(f"Failed to load configuration: {exc}")
+        raise SystemExit(1)
 
     parser = argparse.ArgumentParser(description="pteroDaCtyl CLI")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -33,6 +38,16 @@ def main():
     )
     validate_parser.add_argument(
         "-v", "--verbose", help="Verbose output", action="store_true", default=False
+    )
+
+    validate_parser.add_argument(
+        "--continue-on-failure",
+        help=(
+            "Log validation failures without exiting. Useful for production pipelines "
+            "where new false positives should not break builds."
+        ),
+        action="store_true",
+        default=False,
     )
 
     validate_group = validate_parser.add_mutually_exclusive_group(required=True)
@@ -100,6 +115,8 @@ def main():
         path_to_rules = pterodactyl_config["base"]["sigma_rules_directory"]
 
     if args.command == "validate":
+        if args.continue_on_failure:
+            set_exit_on_error(False)
         if args.pre_compilation:
             validate_rules(
                 rules=load_rules(path_to_rules),
