@@ -5,54 +5,61 @@ vars:
 postprocessing:
   - type: template
     template: |+
-      {%- set tags = [] -%}
-      {% for n in rule.tags %}
-        {%- set tag_string = n.namespace ~ '-' ~ n.name -%}
-        {%- set tags=tags.append(tag_string) -%}
-      {% endfor %}
+      {%- set tags_ns = namespace(values=[]) -%}
+      {%- for n in rule.tags or [] -%}
+        {%- set tag_value = (n.namespace ~ '-' ~ n.name) if n.namespace is defined else n.name -%}
+        {%- set _ = tags_ns.values.append(tag_value) -%}
+      {%- endfor -%}
+
+      {%- set state_indexes = pipeline.state.get('index') if pipeline.state is defined else None -%}
+      {%- if state_indexes is string -%}
+        {%- set resolved_indexes = [state_indexes] -%}
+      {%- elif state_indexes is iterable and state_indexes is not string -%}
+        {%- set resolved_indexes = state_indexes | list -%}
+      {%- elif pipeline.vars.index_names is defined -%}
+        {%- set resolved_indexes = pipeline.vars.index_names | list -%}
+      {%- else -%}
+        {%- set resolved_indexes = [] -%}
+      {%- endif -%}
+
+      {%- set language = "eql" if rule.custom_attributes.platforms
+        and rule.custom_attributes.platforms.elastic.query_language == "eql"
+        else "esql" -%}
+
       {%- set rule_data = {
-      "name": rule.title,
-      "rule_id": rule.id | lower,
-      "author": [rule.author] if rule.author is string else rule.author,
-      "description": rule.description,
-      "references": rule.references,
-      "enabled": true,
-      "interval": pipeline.vars.schedule_interval|string ~ pipeline.vars.schedule_interval_unit,
-      "from": "now-" ~ pipeline.vars.schedule_interval|string ~ pipeline.vars.schedule_interval_unit,
-      "false_positives": rule.falsepositives,
-      "immutable": false,
-      "output_index": "",
-      "meta": {
-        "from": "1m"
-      },
-      "severity": rule.level.name | string | lower if rule.level is not none else "low",
-      "severity_mapping": [],
-      "to": "now",
-      "version": 1,
-      "max_signals": 100,
-      "exceptions_list": [],
-      "setup": "",
-      "type": "eql" if rule.custom_attributes.platforms and rule.custom_attributes.platforms.elastic.query_language == "eql" else "esql",
-      "note": "",
-      "license": "DRL",
-      "language": "eql" if rule.custom_attributes.platforms and rule.custom_attributes.platforms.elastic.query_language == "eql" else "esql",
-      {%- set state_indexes = pipeline.state.get('index') %}
-      {%- if state_indexes is string %}
-      {%- set resolved_indexes = [state_indexes] %}
-      {%- elif state_indexes is iterable %}
-      {%- set resolved_indexes = state_indexes | list %}
-      {%- else %}
-      {%- set resolved_indexes = pipeline.vars.index_names | list %}
-      {%- endif %}
-      "index": resolved_indexes,
-      "query": query,
-      "tags": tags,
-      "actions": [],
-      "related_integrations": [],
-      "required_fields": [],
-      "risk_score_mapping": [],
-      "risk_score": 21
-      }
-      -%}
+        "name": rule.title,
+        "rule_id": rule.id | lower,
+        "author": [rule.author] if rule.author is string else rule.author,
+        "description": rule.description,
+        "references": rule.references,
+        "enabled": true,
+        "interval": pipeline.vars.schedule_interval|string ~ pipeline.vars.schedule_interval_unit,
+        "from": "now-" ~ pipeline.vars.schedule_interval|string ~ pipeline.vars.schedule_interval_unit,
+        "false_positives": rule.falsepositives,
+        "immutable": false,
+        "output_index": "",
+        "meta": {
+          "from": "1m"
+        },
+        "severity": rule.level.name | string | lower if rule.level is not none else "low",
+        "severity_mapping": [],
+        "to": "now",
+        "version": 1,
+        "max_signals": 100,
+        "exceptions_list": [],
+        "setup": "",
+        "type": language,
+        "note": "",
+        "license": "DRL",
+        "language": language,
+        "index": resolved_indexes,
+        "query": query,
+        "tags": tags_ns.values,
+        "actions": [],
+        "related_integrations": [],
+        "required_fields": [],
+        "risk_score_mapping": [],
+        "risk_score": 21
+      } -%}
 
       {{ rule_data | tojson }}

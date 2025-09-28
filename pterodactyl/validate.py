@@ -390,31 +390,72 @@ def live_test_rules(
             platform_config["platforms"][platform],
         )
 
-        # Extract query language from original rule configuration
-        unconverted_rule = load_rules(path_to_rules, rule_name=rule["name"])
+        # Extract query language and other metadata from the original rule configuration
+        raw_rule = load_rules(path_to_rules, rule_name=rule["name"])
 
         query_language = (
-            unconverted_rule[0]["raw"][0]
+            raw_rule[0]["raw"][0]
             .get("platforms", {})
             .get(platform, {})
             .get("query_language", "esql")
         )
 
-        unconverted_rule = load_rules(path_to_rules, rule_name=rule["name"])
-
         merged_unconverted_rule = deep_merge(
-            unconverted_rule[0]["raw"][0].get("environments", {}).get(environment, {}),
-            unconverted_rule[0]["raw"][0],
+            raw_rule[0]["raw"][0]
+            .get("environments", {})
+            .get(environment, {}),
+            raw_rule[0]["raw"][0],
         )
 
-        result_count = platform_functions[platform](
-            query=rule["rule"],
-            config=env_platform_rule_config,
-            query_language=query_language,
-            timeframe=merged_unconverted_rule.get("tests", {}).get("platforms", {}).get(platform, {}).get(
-                "timeframe", "90d"
-            ),
+        timeframe = (
+            merged_unconverted_rule.get("tests", {})
+            .get("platforms", {})
+            .get(platform, {})
+            .get("timeframe", "90d")
         )
+
+        elastic_indexes = None
+        if platform == "elastic":
+            logs_config = env_platform_rule_config.get("logs", {})
+            logsource = merged_unconverted_rule.get("logsource", {})
+            candidate_keys = [
+                value.lower()
+                for value in (
+                    logsource.get("service"),
+                    logsource.get("product"),
+                    logsource.get("category"),
+                )
+                if isinstance(value, str)
+            ]
+
+            if isinstance(logs_config, dict):
+                for candidate in candidate_keys:
+                    log_config = logs_config.get(candidate)
+                    if isinstance(log_config, dict) and log_config.get("indexes"):
+                        elastic_indexes = log_config.get("indexes")
+                        break
+
+                if not elastic_indexes and len(logs_config) == 1:
+                    only_log_config = next(iter(logs_config.values()))
+                    if isinstance(only_log_config, dict):
+                        elastic_indexes = only_log_config.get("indexes")
+
+            if query_language.lower() == "eql" and not elastic_indexes:
+                warning(
+                    "EQL rule executed without a matching index configuration; execution will skip."
+                )
+
+        execute_kwargs = {
+            "query": rule["rule"],
+            "config": env_platform_rule_config,
+            "query_language": query_language,
+            "timeframe": timeframe,
+        }
+
+        if platform == "elastic" and elastic_indexes:
+            execute_kwargs["index"] = elastic_indexes
+
+        result_count = platform_functions[platform](**execute_kwargs)
         rule["result_count"] = result_count
 
         platform_tests = (

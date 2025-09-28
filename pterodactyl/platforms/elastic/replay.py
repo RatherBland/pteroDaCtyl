@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from elasticsearch import Elasticsearch
 from elastic_transport import ConnectionError as ElasticConnectionError
 import time
@@ -168,8 +169,45 @@ def count_docs(index: str, config: dict) -> int:
         return 0
 
 
+def _coerce_index_value(index_value: str | Sequence[str] | None) -> str | None:
+    """Normalize an index or collection of indexes into a comma-delimited string."""
+
+    if not index_value:
+        return None
+
+    if isinstance(index_value, str):
+        return index_value
+
+    if isinstance(index_value, Sequence):
+        filtered = [value for value in index_value if value]
+        return ",".join(filtered) if filtered else None
+
+    return None
+
+
+def _resolve_default_index(config: dict) -> str | None:
+    """Attempt to resolve a default index from the merged platform configuration."""
+
+    logs_config = config.get("logs") if isinstance(config, dict) else None
+    if not isinstance(logs_config, dict):
+        return None
+
+    if len(logs_config) != 1:
+        return None
+
+    first_log_config = next(iter(logs_config.values()), {})
+    if not isinstance(first_log_config, dict):
+        return None
+
+    return _coerce_index_value(first_log_config.get("indexes"))
+
+
 def execute_query(
-    query: str, config: dict, query_language: str = "esql", timeframe: str = None
+    query: str,
+    config: dict,
+    query_language: str = "esql",
+    timeframe: str = None,
+    index: str | Sequence[str] | None = None,
 ) -> int:
     try:
         elastic = ElasticPlatform(config)
@@ -177,6 +215,7 @@ def execute_query(
 
         logger.info(f"Executing {query_language.upper()} query: {query}")
 
+        timespan_dsl = None
         if timeframe:
             timespan_dsl = {
                 "bool": {
@@ -193,10 +232,18 @@ def execute_query(
                 }
             }
 
+        # Normalise provided index or fall back to the single configured log index.
+        target_index = _coerce_index_value(index) or _resolve_default_index(config)
+
         if query_language.lower() == "eql":
             # For EQL, we need to specify an index pattern
+            if not target_index:
+                raise ValueError(
+                    "EQL queries require an explicit index. Provide the index argument "
+                    "or ensure a single log configuration supplies indexes."
+                )
             resp = client.eql.search(
-                index="*",
+                index=target_index,
                 body={"query": query},
                 filter=timespan_dsl if timeframe else None,
             )
