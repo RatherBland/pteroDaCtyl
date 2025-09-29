@@ -46,9 +46,9 @@ The whole idea for this project came about after seeing the work produced to mak
 
 The tool provides three primary CLI commands:
 
-- **validate:**  
+- **validate:**
   Validates detection rules by running tests defined in the YAML rule files against a test schema or in a live environment. This helps ensure that each rule includes the necessary test cases and that the schema is correct.
-  
+
   Options:
   - `-f, --file`: Path to the detection rule to validate (optional)
   - `-p, --platform`: Platform to validate against (optional)
@@ -58,17 +58,17 @@ The tool provides three primary CLI commands:
     - `--post-compilation`: Executes rules against a live environment
   - `-e, --include-exceptions`: Includes environment level exceptions (default: True)
 
-- **compile:**  
+- **compile:**
   Converts Sigma rules into platform-specific detection formats. The conversion process uses configurable processing pipelines and backend modules (e.g., Elastic backend using ESQL) to output the rules in the appropriate format for your SIEM platform.
-  
+
   Options:
   - `-f, --file`: Path to the detection rule to compile (optional)
   - `-o, --output`: Path to the output directory (optional)
   - `-v, --verbose`: Enables verbose output
 
-- **deploy:**  
+- **deploy:**
   Deploys detection rules to security platforms. Currently only supports deploying to Elastic. If no options are provided PteroDaCtyl will use the information in the configuration files `environments.toml` and information from the rule to deploy to the correct place(s).
-  
+
   Options:
   - `-f, --file`: Path to the detection rule to deploy (optional)
   - `-p, --platform`: Platform to deploy to (optional)
@@ -79,25 +79,25 @@ The tool provides three primary CLI commands:
 
 pteroDaCtyl is organized around a modular architecture:
 
-- **Configuration:**  
+- **Configuration:**
   Configuration files (in TOML format) provide settings for platforms, environments, and global defaults. These are loaded via helper functions (`load_organisations_config`, `load_pterodactyl_config`, `load_platform_config`).
 
-- **CLI:**  
+- **CLI:**
   The CLI (e.g., in `pterodactyl/cli.py`) parses user commands and arguments. It supports subcommands for validation, compilation, and deployment. The CLI accepts an optional file parameter to target a specific rule file; if omitted, it uses a configured directory of Sigma rules.
 
-- **Conversion:**  
+- **Conversion:**
   The conversion logic (in `pterodactyl/convert.py`) leverages a pipeline architecture. A `Conversion` class resolves and applies processing pipelines based on the platform configuration. For instance, for Elastic, it might use pipelines configured with functions like `add_indexes` to ensure proper index handling.
 
-- **Testing:**  
+- **Testing:**
   Testing logic (in `pterodactyl/test.py`) uses a Pydantic schema to validate rule test definitions. This ensures that each rule has at least one test and meets the required structure.
 
-- **Platform-Specific Modules:**  
+- **Platform-Specific Modules:**
   Platform-specific functionalities reside within `pterodactyl/platforms/`. For example:
   - `pterodactyl/platforms/elastic/` contains code to manage Elastic-specific pipelines and replay functionality.
   - `pterodactyl/platforms/splunk/` holds similar functionality for Splunk, including index management and document deletion.
   - The `schema.py` file under `pterodactyl/platforms/` defines Pydantic schemas used for validating test cases.
 
-- **Utilities:**  
+- **Utilities:**
   Utility functions (in `pterodactyl/utils.py`) handle common tasks such as loading rule files, deep merging configurations, etc.
 
 ## Directory Structure
@@ -253,7 +253,6 @@ platforms:
   elastic:
     query_language: eql
     raw_query: |
-      index = {{index[0]}}
       sequence by host.id with maxspan=5m
         [process where process.name == "cmd.exe" and process.args : "*rundll32*"]
         [network where network.direction == "outgoing" and network.port == 4444]
